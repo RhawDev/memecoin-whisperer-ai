@@ -1,61 +1,45 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import ParticlesBackground from './ParticlesBackground';
-
 const Hero = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('active');
-        }
-      }, 
-      { threshold: 0.1 }
-    );
-
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+      }
+    }, {
+      threshold: 0.1
+    });
     if (sectionRef.current) {
       observer.observe(sectionRef.current);
     }
-
     return () => {
       if (sectionRef.current) {
         observer.unobserve(sectionRef.current);
       }
     };
   }, []);
-
-  return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+  return <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
       <ParticlesBackground />
       
       <div className="container mx-auto px-4 z-10">
         <div ref={sectionRef} className="reveal max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 gradient-text">
-            Know Thy Memecoin Self
-          </h1>
+          <h1 className="<h1 class=\"text-4xl font-bold mb-6 md:text-8xl bg-[linear-gradient(90deg,_blue,_orange,_yellow,_white)] bg-clip-text text-transparent\"> Know Thy Memecoin Self </h1> text-8xl px-[11px] py-0 my-[10px] mx-px">Be the Alpha
+Not Exit Liquidity</h1>
           
-          <p className="text-xl md:text-2xl text-gray-300 mb-8">
-            AI-powered Solana wallet profiler for smarter degens.
-          </p>
+          <p className="text-xl md:text-2xl text-gray-300 mb-8"> Know your trading patterns. Track the meme market. Win more.</p>
           
           <div className="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-16">
             <Link to="/dashboard">
-              <Button 
-                className="text-lg px-8 py-6 h-auto bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600"
-              >
+              <Button className="<button class=\"rounded-2xl px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold hover:scale-105 transition duration-300\">\n  Analyze My Wallet\n</button>">
                 Analyze My Wallet <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link to="/archetypes">
-              <Button 
-                variant="outline" 
-                className="text-lg px-8 py-6 h-auto border-white/20 hover:bg-white/10"
-              >
+              <Button variant="outline" className="<button class=\"rounded-2xl px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 font-bold hover:scale-105 transition duration-300\"> Analyze My Wallet </button> bg-zinc-50 text-slate-950">
                 Explore Trader Archetypes
               </Button>
             </Link>
@@ -88,8 +72,6 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
