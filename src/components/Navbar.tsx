@@ -28,7 +28,7 @@ const Navbar = () => {
           <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 flex items-center justify-center">
             <span className="text-white font-bold text-xl">M</span>
           </div>
-          <span className="text-xl font-bold gradient-text">Memetric.ai</span>
+          <span className="text-xl font-bold gradient-text">Memesense</span>
         </Link>
 
         {/* Desktop Navigation */}
