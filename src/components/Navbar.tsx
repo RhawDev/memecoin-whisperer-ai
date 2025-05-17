@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, Hexagon } from "lucide-react";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -25,8 +25,9 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link to="/" className="flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 flex items-center justify-center">
-            <span className="text-white font-bold text-xl">M</span>
+          <div className="w-10 h-10 rounded-full relative flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-500 animate-gradient-movement"></div>
+            <Hexagon className="w-8 h-8 text-white z-10 drop-shadow-md" strokeWidth={1.5} />
           </div>
           <span className="text-xl font-bold gradient-text">Memesense</span>
         </Link>
