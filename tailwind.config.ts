@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -84,11 +85,51 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' }
+				},
+				'fade-in': {
+					'0%': { opacity: '0', transform: 'translateY(20px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				'glow': {
+					'0%, 100%': { opacity: '0.8' },
+					'50%': { opacity: '1' }
+				},
+				'pulse': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.5' }
+				},
+				'gradient-movement': {
+					'0%': { backgroundPosition: '0% 50%' },
+					'50%': { backgroundPosition: '100% 50%' },
+					'100%': { backgroundPosition: '0% 50%' }
+				},
+				'particles': {
+					'0%': { transform: 'translate(0, 0)' },
+					'33%': { transform: 'translate(100px, -50px)' },
+					'66%': { transform: 'translate(20px, 20px)' },
+					'100%': { transform: 'translate(0, 0)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'float': 'float 6s ease-in-out infinite',
+				'fade-in': 'fade-in 0.6s ease-out forwards',
+				'glow': 'glow 2s ease-in-out infinite',
+				'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+				'gradient-movement': 'gradient-movement 8s ease infinite',
+				'particles': 'particles 20s ease-in-out infinite'
+			},
+			backgroundImage: {
+				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+				'purple-blue-gradient': 'linear-gradient(90deg, rgba(139, 92, 246, 1) 0%, rgba(59, 130, 246, 1) 100%)',
+				'pink-orange-gradient': 'linear-gradient(90deg, rgba(236, 72, 153, 1) 0%, rgba(234, 88, 12, 1) 100%)',
+				'green-cyan-gradient': 'linear-gradient(90deg, rgba(5, 150, 105, 1) 0%, rgba(14, 165, 233, 1) 100%)',
+				'yellow-red-gradient': 'linear-gradient(90deg, rgba(234, 179, 8, 1) 0%, rgba(239, 68, 68, 1) 100%)',
 			}
 		}
 	},
