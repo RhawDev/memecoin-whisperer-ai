@@ -16,11 +16,21 @@ serve(async (req: Request) => {
 
   try {
     const { timeframe, tokenTicker, queryType } = await req.json();
+    console.log("Analyzing market with parameters:", { timeframe, tokenTicker, queryType });
     
     if (!timeframe && !tokenTicker && !queryType) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }), 
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check if OpenAI API key is available
+    if (!openAIApiKey) {
+      console.error("OpenAI API key is not configured");
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key is not configured' }), 
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -31,6 +41,7 @@ serve(async (req: Request) => {
     // If analyzing a specific token
     if (tokenTicker) {
       try {
+        console.log(`Fetching data for token: ${tokenTicker}`);
         // Try to get market data for the token from Solscan
         const solscanTokenResponse = await fetch(
           `https://public-api.solscan.io/token/meta?tokenAddress=${tokenTicker}`,
@@ -44,6 +55,9 @@ serve(async (req: Request) => {
         if (solscanTokenResponse.ok) {
           const tokenData = await solscanTokenResponse.json();
           contextData += `Token Info: ${JSON.stringify(tokenData)}\n`;
+          console.log("Successfully fetched token data");
+        } else {
+          console.log(`Failed to fetch token data: ${solscanTokenResponse.status}`);
         }
       } catch (error) {
         console.error("Error fetching token data:", error);
@@ -67,6 +81,8 @@ serve(async (req: Request) => {
     } else {
       systemPrompt += "Provide a general overview of the current Solana memecoin market conditions including trending tokens, sentiment, and key metrics.";
     }
+    
+    console.log("Calling OpenAI API with system prompt:", systemPrompt);
     
     // Call OpenAI API
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -93,9 +109,11 @@ serve(async (req: Request) => {
     
     if (!openAIResponse.ok) {
       const openAIError = await openAIResponse.text();
+      console.error(`OpenAI API error: ${openAIResponse.status} - ${openAIError}`);
       throw new Error(`OpenAI API error: ${openAIResponse.status} - ${openAIError}`);
     }
     
+    console.log("Successfully received response from OpenAI API");
     const openAIResult = await openAIResponse.json();
     const analysisText = openAIResult.choices[0].message.content;
     
@@ -119,6 +137,7 @@ serve(async (req: Request) => {
       marketSentiment = "Bearish";
     }
     
+    console.log("Analysis completed successfully");
     return new Response(
       JSON.stringify({
         analysis: analysisText,
@@ -129,7 +148,7 @@ serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error("Error processing request:", error);
+    console.error("Error processing market analysis request:", error);
     
     return new Response(
       JSON.stringify({ error: error.message || 'An error occurred analyzing the market' }),

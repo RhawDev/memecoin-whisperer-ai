@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AuthForm from '@/components/AuthForm';
+import { Spinner } from '@/components/ui/spinner';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -30,7 +31,10 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          navigate('/dashboard', { replace: true });
+          // Use setTimeout to prevent potential state update loops
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 0);
         }
       }
     );
@@ -41,9 +45,9 @@ const Auth = () => {
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-pulse">
-          <div className="h-8 w-36 bg-gray-700 rounded mb-4"></div>
-          <div className="h-4 w-24 bg-gray-700 rounded"></div>
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" className="text-indigo-500" />
+          <p className="text-gray-400">Checking authentication...</p>
         </div>
       </div>
     );

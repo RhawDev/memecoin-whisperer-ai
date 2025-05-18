@@ -3,18 +3,31 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 
 const AuthGuard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checkComplete, setCheckComplete] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     
-    // Check for an existing session
+    // First set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (isMounted) {
+        const authenticated = !!session;
+        setIsAuthenticated(authenticated);
+        setIsLoading(false);
+        
+        if (!authenticated && !location.pathname.includes('/auth')) {
+          navigate('/auth', { replace: true });
+        }
+      }
+    });
+
+    // Then check for an existing session
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -23,7 +36,6 @@ const AuthGuard = () => {
           const authenticated = !!session;
           setIsAuthenticated(authenticated);
           setIsLoading(false);
-          setCheckComplete(true);
           
           if (!authenticated) {
             navigate('/auth', { replace: true });
@@ -34,24 +46,10 @@ const AuthGuard = () => {
         if (isMounted) {
           setIsAuthenticated(false);
           setIsLoading(false);
-          setCheckComplete(true);
           navigate('/auth', { replace: true });
         }
       }
     };
-
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (isMounted) {
-        const authenticated = !!session;
-        setIsAuthenticated(authenticated);
-        setIsLoading(false);
-        
-        if (!authenticated && checkComplete) {
-          navigate('/auth', { replace: true });
-        }
-      }
-    });
 
     checkSession();
 
@@ -59,16 +57,14 @@ const AuthGuard = () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   if (isLoading) {
     return (
-      <div className="bg-black min-h-screen p-6">
-        <div className="container mx-auto">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <Skeleton className="h-12 w-48" />
-            <Skeleton className="h-[500px] w-full" />
-          </div>
+      <div className="bg-black min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" className="text-indigo-500" />
+          <p className="text-gray-400">Verifying authentication...</p>
         </div>
       </div>
     );
