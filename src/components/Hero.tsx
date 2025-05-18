@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import ParticlesBackground from './ParticlesBackground';
 import { supabase } from '@/integrations/supabase/client';
+
 const Hero = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
@@ -15,22 +17,22 @@ const Hero = () => {
     }, {
       threshold: 0.1
     });
+
     if (sectionRef.current) {
       observer.observe(sectionRef.current);
     }
+
     return () => {
       if (sectionRef.current) {
         observer.unobserve(sectionRef.current);
       }
     };
   }, []);
+
   const handleLaunchApp = async () => {
     // Check if user is authenticated
-    const {
-      data: {
-        session
-      }
-    } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
+    
     if (session) {
       // If authenticated, go to dashboard
       navigate('/dashboard');
@@ -39,7 +41,9 @@ const Hero = () => {
       navigate('/auth');
     }
   };
-  return <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+
+  return (
+    <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
       <ParticlesBackground />
       
       <div className="container mx-auto px-4 z-10">
@@ -91,6 +95,8 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </section>;
+    </section>
+  );
 };
+
 export default Hero;

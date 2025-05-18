@@ -11,7 +11,7 @@ import ChatInterface from '@/components/ChatInterface';
 import TwitterTracking from '@/components/TwitterTracking';
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState<string>('wallet');
+  const [activeTab, setActiveTab] = useState<string>("wallet");
 
   return (
     <div className="bg-black text-white min-h-screen">
@@ -44,11 +44,18 @@ const Dashboard = () => {
             </TabsContent>
             
             <TabsContent value="sentiment" className="space-y-6">
-              <SentimentChart />
+              <SentimentChart 
+                tokenName="Solana Memes" 
+                tokenTicker="$MEME" 
+                change="+24.5%" 
+              />
             </TabsContent>
             
             <TabsContent value="launches" className="space-y-6">
-              <LaunchMetrics />
+              <LaunchMetrics 
+                tokenCount={42}
+                weekChange="+15%" 
+              />
             </TabsContent>
             
             <TabsContent value="twitter" className="space-y-6">

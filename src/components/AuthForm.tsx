@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -38,32 +37,34 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type SignupFormValues = z.infer<typeof signupSchema>;
 type ResetFormValues = z.infer<typeof resetSchema>;
 
+// Clean up auth state helper function 
+const cleanupAuthState = () => {
+  // Remove all Supabase auth keys from localStorage
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  // Remove from sessionStorage if in use
+  Object.keys(sessionStorage || {}).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      sessionStorage.removeItem(key);
+    }
+  });
+};
+
 const AuthForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("login");
   const [resetSent, setResetSent] = useState(false);
   
-  // Clean up any existing auth state when the component mounts or when switching tabs
-  const cleanupAuthState = () => {
-    // Remove all Supabase auth keys from localStorage
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    // Remove from sessionStorage if in use
-    Object.keys(sessionStorage || {}).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-  };
-
   // Handle tab change
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setResetSent(false);
+    // Clean up existing auth state when switching tabs
+    cleanupAuthState();
   };
 
   // Login form
@@ -94,7 +95,7 @@ const AuthForm = () => {
   });
 
   // Handle login submission
-  const onLoginSubmit = async (values: LoginFormValues) => {
+  const onLoginSubmit = async (values: any) => {
     try {
       setIsLoading(true);
       // Clean up existing state
@@ -105,6 +106,7 @@ const AuthForm = () => {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
         // Continue even if this fails
+        console.error("Error with global sign out:", err);
       }
       
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -130,7 +132,7 @@ const AuthForm = () => {
   };
 
   // Handle signup submission
-  const onSignupSubmit = async (values: SignupFormValues) => {
+  const onSignupSubmit = async (values: any) => {
     try {
       setIsLoading(true);
       // Clean up existing state

@@ -8,6 +8,7 @@ import Archetypes from './Archetypes';
 import Market from './Market';
 import NotFound from './NotFound';
 import Auth from './Auth';
+import Settings from './Settings';
 import AuthGuard from '@/components/AuthGuard';
 
 const Index = () => {
@@ -22,6 +23,7 @@ const Index = () => {
       {/* Protected Routes */}
       <Route element={<AuthGuard />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
       
       <Route path="*" element={<NotFound />} />
