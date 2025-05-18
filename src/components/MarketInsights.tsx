@@ -1,15 +1,49 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const mockTokenData = [
-  { name: '1H', tokens: 4 },
-  { name: '4H', tokens: 12 },
-  { name: '12H', tokens: 18 },
-  { name: '24H', tokens: 24 },
-  { name: '7D', tokens: 65 },
-  { name: '30D', tokens: 120 },
-];
+const mockTokenDataMap = {
+  '1h': [
+    { name: '1H', tokens: 4 },
+  ],
+  '4h': [
+    { name: '1H', tokens: 4 },
+    { name: '4H', tokens: 12 },
+  ],
+  '12h': [
+    { name: '1H', tokens: 4 },
+    { name: '4H', tokens: 12 },
+    { name: '12H', tokens: 18 },
+  ],
+  '24h': [
+    { name: '1H', tokens: 4 },
+    { name: '4H', tokens: 12 },
+    { name: '12H', tokens: 18 },
+    { name: '24H', tokens: 24 },
+  ],
+  '7d': [
+    { name: '1H', tokens: 4 },
+    { name: '4H', tokens: 12 },
+    { name: '12H', tokens: 18 },
+    { name: '24H', tokens: 24 },
+    { name: '7D', tokens: 65 },
+  ],
+  '30d': [
+    { name: '1H', tokens: 4 },
+    { name: '4H', tokens: 12 },
+    { name: '12H', tokens: 18 },
+    { name: '24H', tokens: 24 },
+    { name: '7D', tokens: 65 },
+    { name: '30D', tokens: 120 },
+  ],
+};
 
 const mockSentimentData = [
   { name: 'Bullish', value: 65 },
@@ -47,10 +81,25 @@ const trendingTokens = [
   { name: "$MEME", mentions: 2571, change: "+22.4%" },
 ];
 
+const timeRangeOptions = [
+  { value: '1h', label: '1 Hour' },
+  { value: '4h', label: '4 Hours' },
+  { value: '12h', label: '12 Hours' },
+  { value: '24h', label: '24 Hours' },
+  { value: '7d', label: '7 Days' },
+  { value: '30d', label: '30 Days' },
+];
+
 const MarketInsights = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const tokensRef = useRef<HTMLDivElement>(null);
+  const [timeRange, setTimeRange] = useState('24h');
+  const [chartData, setChartData] = useState(mockTokenDataMap['24h']);
+
+  useEffect(() => {
+    setChartData(mockTokenDataMap[timeRange as keyof typeof mockTokenDataMap] || mockTokenDataMap['24h']);
+  }, [timeRange]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -88,10 +137,27 @@ const MarketInsights = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div ref={chartRef} className="reveal lg:col-span-2 glass-card p-6">
-            <h3 className="text-xl font-bold mb-4 text-white">New Token Launches</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-white">New Token Launches</h3>
+              <Select 
+                value={timeRange} 
+                onValueChange={value => setTimeRange(value)}
+              >
+                <SelectTrigger className="w-[180px] bg-black/50 border-gray-700">
+                  <SelectValue placeholder="Select time range" />
+                </SelectTrigger>
+                <SelectContent className="bg-black/90 border-gray-700">
+                  {timeRangeOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTokenData}>
+                <BarChart data={chartData}>
                   <XAxis 
                     dataKey="name" 
                     stroke="#9CA3AF"

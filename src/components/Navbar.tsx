@@ -1,12 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Menu, Hexagon } from "lucide-react";
+import UserMenu from './UserMenu';
+import { supabase } from '@/integrations/supabase/client';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,8 +18,33 @@ const Navbar = () => {
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    // First set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Then check for an existing session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+
+    checkSession();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const handleLaunchApp = () => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth');
+    }
+  };
 
   return (
     <nav
@@ -43,15 +72,21 @@ const Navbar = () => {
           <Link to="/market" className="text-gray-300 hover:text-white transition-colors">
             Market Insights
           </Link>
-          <Link to="/dashboard">
-            <Button variant="default" className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white">
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="default" 
+              className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white"
+              onClick={handleLaunchApp}
+            >
               Launch App
             </Button>
-          </Link>
+            <UserMenu />
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="md:hidden">
+        <div className="md:hidden flex items-center space-x-2">
+          <UserMenu />
           <Button 
             variant="ghost" 
             size="icon"
@@ -75,11 +110,13 @@ const Navbar = () => {
             <Link to="/market" className="text-gray-300 hover:text-white transition-colors py-2">
               Market Insights
             </Link>
-            <Link to="/dashboard" className="w-full">
-              <Button variant="default" className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white">
-                Launch App
-              </Button>
-            </Link>
+            <Button 
+              variant="default" 
+              className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white"
+              onClick={handleLaunchApp}
+            >
+              Launch App
+            </Button>
           </div>
         </div>
       )}
