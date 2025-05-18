@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from '@/integrations/supabase/client';
 
 type WalletProfile = {
   tradingStyle: string;
@@ -20,50 +22,49 @@ type WalletProfile = {
   };
 };
 
-const mockProfile: WalletProfile = {
-  tradingStyle: "Strategic Opportunist",
-  personality: "The Strategist",
-  emoji: "🧠",
-  strengths: [
-    "Calculated decision making",
-    "Strong risk management",
-    "Patient entry timing"
-  ],
-  weaknesses: [
-    "Occasional hesitation",
-    "Missing some explosive opportunities",
-    "Too conservative on position sizing"
-  ],
-  tips: [
-    "Consider slightly increasing position size on high-conviction plays",
-    "Set more aggressive take-profit targets for part of your position",
-    "Implement trailing stops to maximize gains on trending tokens"
-  ],
-  stats: {
-    averageHoldTime: "3.2 days",
-    winRate: "64%",
-    tradingVolume: "145 SOL",
-    riskUsage: "Conservative"
-  }
-};
-
 const WalletAnalyzer = () => {
   const [walletAddress, setWalletAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
   const [profile, setProfile] = useState<WalletProfile | null>(null);
+  const { toast } = useToast();
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!walletAddress) return;
     
     setIsLoading(true);
     
-    // Mock API call - in a real app, this would call an actual API
-    setTimeout(() => {
-      setProfile(mockProfile);
-      setIsLoading(false);
+    try {
+      // Call our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('analyze-wallet', {
+        body: { walletAddress }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Error analyzing wallet');
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      setProfile(data.profile);
       setIsAnalyzed(true);
-    }, 2000);
+      toast({
+        title: "Analysis Complete",
+        description: `Successfully analyzed wallet ${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`,
+      });
+      
+    } catch (error) {
+      console.error("Wallet analysis error:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Unable to analyze wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

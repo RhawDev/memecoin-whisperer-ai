@@ -8,6 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const mockTokenDataMap = {
   '1h': [
@@ -44,11 +49,6 @@ const mockTokenDataMap = {
     { name: '30D', tokens: 120 },
   ],
 };
-
-const mockSentimentData = [
-  { name: 'Bullish', value: 65 },
-  { name: 'Bearish', value: 35 },
-];
 
 const COLORS = ['#8B5CF6', '#EF4444'];
 
@@ -96,12 +96,80 @@ const MarketInsights = () => {
   const tokensRef = useRef<HTMLDivElement>(null);
   const [timeRange, setTimeRange] = useState('24h');
   const [chartData, setChartData] = useState(mockTokenDataMap['24h']);
+  const [marketSentiment, setMarketSentiment] = useState<string | null>(null);
+  const [sentimentData, setSentimentData] = useState([
+    { name: 'Bullish', value: 65 },
+    { name: 'Bearish', value: 35 },
+  ]);
+  const [marketAnalysis, setMarketAnalysis] = useState<string | null>(null);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setChartData(mockTokenDataMap[timeRange as keyof typeof mockTokenDataMap] || mockTokenDataMap['24h']);
+    // Fetch new market analysis when timeframe changes
+    fetchMarketAnalysis(timeRange);
   }, [timeRange]);
 
+  const fetchMarketAnalysis = async (timeframe: string) => {
+    setIsLoadingAnalysis(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-market', {
+        body: { 
+          timeframe,
+          queryType: 'marketSentiment'
+        }
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      setMarketAnalysis(data.analysis);
+      setMarketSentiment(data.sentiment);
+      
+      // Update sentiment pie chart
+      if (data.sentiment === 'Bullish') {
+        const bullishValue = Math.min(Math.floor(Math.random() * 30) + 55, 90); // 55-85%
+        setSentimentData([
+          { name: 'Bullish', value: bullishValue },
+          { name: 'Bearish', value: 100 - bullishValue }
+        ]);
+      } else if (data.sentiment === 'Bearish') {
+        const bearishValue = Math.min(Math.floor(Math.random() * 30) + 55, 90); // 55-85%
+        setSentimentData([
+          { name: 'Bullish', value: 100 - bearishValue },
+          { name: 'Bearish', value: bearishValue }
+        ]);
+      } else {
+        // Neutral
+        setSentimentData([
+          { name: 'Bullish', value: 50 },
+          { name: 'Bearish', value: 50 }
+        ]);
+      }
+      
+    } catch (error) {
+      console.error("Market analysis error:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Unable to analyze market",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAnalysis(false);
+    }
+  };
+
   useEffect(() => {
+    // Fetch initial market analysis
+    fetchMarketAnalysis(timeRange);
+    
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -182,6 +250,29 @@ const MarketInsights = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            
+            {marketAnalysis && (
+              <Card className="mt-6 bg-black/30 border-gray-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg text-white flex items-center">
+                    <span className="mr-2">🧠</span> AI Market Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingAnalysis ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full bg-gray-700" />
+                      <Skeleton className="h-4 w-[90%] bg-gray-700" />
+                      <Skeleton className="h-4 w-[80%] bg-gray-700" />
+                    </div>
+                  ) : (
+                    <div className="text-gray-300 text-sm">
+                      {marketAnalysis}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="glass-card p-6">
@@ -190,7 +281,7 @@ const MarketInsights = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={mockSentimentData}
+                    data={sentimentData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -198,7 +289,7 @@ const MarketInsights = () => {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {mockSentimentData.map((entry, index) => (
+                    {sentimentData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -209,10 +300,28 @@ const MarketInsights = () => {
 
             <div className="text-center mb-6">
               <p className="text-gray-400 text-sm mb-1">CURRENT MEME MARKET MOOD</p>
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent text-2xl font-bold">
-                Bullish
+              <div className={`bg-gradient-to-r ${
+                marketSentiment === 'Bullish' 
+                  ? 'from-green-500 to-blue-500' 
+                  : marketSentiment === 'Bearish'
+                    ? 'from-red-500 to-orange-500'
+                    : 'from-indigo-500 to-purple-500'
+              } bg-clip-text text-transparent text-2xl font-bold`}>
+                {isLoadingAnalysis ? (
+                  <Skeleton className="h-8 w-24 bg-gray-700 mx-auto" />
+                ) : (
+                  marketSentiment || "Analyzing..."
+                )}
               </div>
             </div>
+            
+            <Button 
+              onClick={() => fetchMarketAnalysis(timeRange)}
+              disabled={isLoadingAnalysis}
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+            >
+              {isLoadingAnalysis ? "Analyzing..." : "Refresh Analysis"}
+            </Button>
           </div>
         </div>
 
