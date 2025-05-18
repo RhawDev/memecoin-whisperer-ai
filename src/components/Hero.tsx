@@ -1,15 +1,12 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import ParticlesBackground from './ParticlesBackground';
 import { supabase } from '@/integrations/supabase/client';
-
 const Hero = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
@@ -27,11 +24,13 @@ const Hero = () => {
       }
     };
   }, []);
-  
   const handleLaunchApp = async () => {
     // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: {
+        session
+      }
+    } = await supabase.auth.getSession();
     if (session) {
       // If authenticated, go to dashboard
       navigate('/dashboard');
@@ -40,9 +39,7 @@ const Hero = () => {
       navigate('/auth');
     }
   };
-
-  return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+  return <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
       <ParticlesBackground />
       
       <div className="container mx-auto px-4 z-10">
@@ -57,14 +54,11 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4 mb-16">
-            <Button 
-              className="rounded-2xl px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold hover:scale-105 transition duration-300"
-              onClick={handleLaunchApp}
-            >
+            <Button className="rounded-2xl px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold hover:scale-105 transition duration-300" onClick={handleLaunchApp}>
               Analyze My Wallet <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Link to="/archetypes">
-              <Button variant="outline" className="rounded-2xl px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 font-bold hover:scale-105 transition duration-300 bg-zinc-50 text-slate-950">
+              <Button variant="outline" className="rounded-2xl px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 font-bold hover:scale-105 transition duration-300 bg-zinc-50 text-slate-50">
                 Explore Trader Archetypes
               </Button>
             </Link>
@@ -97,8 +91,6 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
