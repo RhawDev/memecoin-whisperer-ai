@@ -101,6 +101,7 @@ const SentimentAnalyzer = () => {
     }
   };
 
+  // Get the current sentiment based on the selected timeframe
   const currentSentiment = sentimentData.sentiment;
 
   return (

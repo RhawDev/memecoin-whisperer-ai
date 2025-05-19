@@ -2,7 +2,9 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import MarketInsights from '@/components/MarketInsights';
+import SentimentAnalyzer from '@/components/SentimentAnalyzer';
+import LaunchMetrics from '@/components/LaunchMetrics';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Market = () => {
   return (
@@ -11,7 +13,21 @@ const Market = () => {
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl font-bold mb-8">Market Insights</h1>
-          <MarketInsights />
+          
+          <Tabs defaultValue="sentiment" className="mb-8">
+            <TabsList className="bg-white/5 border border-white/10 mb-6 w-full md:w-auto">
+              <TabsTrigger value="sentiment">Market Sentiment</TabsTrigger>
+              <TabsTrigger value="launches">Launch Metrics</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="sentiment" className="space-y-6">
+              <SentimentAnalyzer />
+            </TabsContent>
+            
+            <TabsContent value="launches" className="space-y-6">
+              <LaunchMetrics />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       <Footer />
