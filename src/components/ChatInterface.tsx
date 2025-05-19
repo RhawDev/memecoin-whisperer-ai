@@ -57,19 +57,33 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Prepare messages for the API call
+      const apiMessages = [...messages, userMessage].map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+      
+      console.log("Sending message to AI Chat:", input);
+      
       // Call OpenAI via our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: { 
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content
-          })),
+          messages: apiMessages,
           type: 'meme-advisor'
         }
       });
       
-      if (error) throw new Error(error.message);
-      if (!data || !data.content) throw new Error('Invalid response from AI');
+      if (error) {
+        console.error("Error from AI chat function:", error);
+        throw new Error(error.message);
+      }
+      
+      if (!data || !data.content) {
+        console.error("Invalid response from AI:", data);
+        throw new Error('Invalid response from AI');
+      }
+      
+      console.log("Received AI response:", data.content.substring(0, 50) + "...");
       
       // Add AI response to chat
       const aiMessage: Message = {
@@ -107,7 +121,7 @@ const ChatInterface: React.FC = () => {
           Memesense AI Chat
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0 flex flex-col h-full">
+      <CardContent className="p-0 flex flex-col h-[500px]">
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages.map((message) => (

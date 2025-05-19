@@ -56,10 +56,10 @@ const MarketMovers: React.FC = () => {
       setError(err.message || "Failed to fetch market data");
       toast.error("Failed to load market movers data");
       
-      // Set fallback data
+      // Set fallback data with actual Solana addresses
       setMarketMovers([
         { 
-          address: '3FZb...r7Yh', 
+          address: 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 
           performance24h: '+42.8%', 
           performance7d: '+156.3%', 
           performance30d: '+287.5%', 
@@ -68,7 +68,7 @@ const MarketMovers: React.FC = () => {
           profitable: '78%'
         },
         { 
-          address: 'Hj7G...9dT4', 
+          address: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', 
           performance24h: '+36.2%', 
           performance7d: '+89.7%', 
           performance30d: '+142.3%', 
@@ -77,7 +77,7 @@ const MarketMovers: React.FC = () => {
           profitable: '82%'
         },
         { 
-          address: '8mN4...k3Fs', 
+          address: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', 
           performance24h: '+28.5%', 
           performance7d: '+76.4%', 
           performance30d: '+118.9%', 
@@ -105,9 +105,14 @@ const MarketMovers: React.FC = () => {
   };
 
   const openOnSolscan = (address: string) => {
-    // Extract full address if abbreviated
-    const fullAddress = address.includes('...') ? '' : address;
-    window.open(`https://solscan.io/account/${fullAddress}`, '_blank');
+    window.open(`https://solscan.io/account/${address}`, '_blank');
+  };
+
+  const getDisplayAddress = (address: string) => {
+    if (address.length > 10) {
+      return `${address.substring(0, 5)}...${address.substring(address.length - 5)}`;
+    }
+    return address;
   };
 
   return (
@@ -189,7 +194,7 @@ const MarketMovers: React.FC = () => {
                         onClick={() => openOnSolscan(wallet.address)}
                         className="text-indigo-400 hover:text-indigo-300 hover:underline flex items-center"
                       >
-                        {wallet.address}
+                        {getDisplayAddress(wallet.address)}
                         <ExternalLink className="h-3 w-3 ml-1 inline" />
                       </button>
                     </TableCell>

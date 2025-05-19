@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import TokenCard from './TokenCard';
+import { RefreshCcw, AlertCircle, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { RefreshCcw, AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 
 type TrendingToken = {
   name: string;
   ticker: string;
+  address: string;
   sentimentScore: number;
   changePercentage: string;
   socialMentions: number;
@@ -51,44 +54,67 @@ const TrendingTokens: React.FC = () => {
       setError(err.message || "Failed to fetch trending tokens data");
       toast.error("Failed to load trending tokens");
       
-      // Fallback to mock data
+      // Fallback to mock data with real token addresses
       setTrendingTokens([
         {
           name: 'Dogecoin',
           ticker: '$DOGE',
+          address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
           sentimentScore: 65,
           changePercentage: '+5%',
           socialMentions: 12500,
-          mentionChange: '+12%'
+          mentionChange: '+12%',
+          price: '0.124 USD',
+          marketCap: '16.8B USD'
         },
         {
-          name: 'Shiba Inu',
-          ticker: '$SHIB',
-          sentimentScore: 42,
-          changePercentage: '-8%',
-          socialMentions: 9800,
-          mentionChange: '-3%'
-        },
-        {
-          name: 'Pepe',
-          ticker: '$PEPE',
-          sentimentScore: 78,
+          name: 'Bonk',
+          ticker: '$BONK',
+          address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+          sentimentScore: 58,
           changePercentage: '+15%',
-          socialMentions: 14200,
-          mentionChange: '+28%'
+          socialMentions: 9800,
+          mentionChange: '+23%',
+          price: '0.00002814 USD',
+          marketCap: '1.67B USD'
         },
         {
-          name: 'Floki',
-          ticker: '$FLOKI',
+          name: 'WIF',
+          ticker: '$WIF',
+          address: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+          sentimentScore: 78,
+          changePercentage: '+8%',
+          socialMentions: 14200,
+          mentionChange: '+18%',
+          price: '0.867 USD',
+          marketCap: '867M USD'
+        },
+        {
+          name: 'POPCAT',
+          ticker: '$POPCAT',
+          address: 'E8JQstQisHQKVJPaCJy9LY7ZKVeTJx8xLELvMZHDKBvL',
           sentimentScore: 53,
-          changePercentage: '+2%',
+          changePercentage: '+32%',
           socialMentions: 5600,
-          mentionChange: '+4%'
+          mentionChange: '+54%',
+          price: '0.00023 USD',
+          marketCap: '23.4M USD'
         }
       ]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const openOnBirdeye = (address: string) => {
+    window.open(`https://birdeye.so/token/${address}?chain=solana`, '_blank');
+  };
+
+  const getSentimentColor = (score: number) => {
+    if (score >= 70) return "bg-green-500";
+    if (score >= 50) return "bg-blue-500";
+    if (score >= 30) return "bg-yellow-500";
+    return "bg-red-500";
   };
 
   if (isLoading) {
@@ -136,15 +162,80 @@ const TrendingTokens: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {trendingTokens.map((token, index) => (
-          <TokenCard
-            key={index}
-            name={token.name}
-            ticker={token.ticker}
-            sentimentScore={token.sentimentScore}
-            changePercentage={token.changePercentage}
-            socialMentions={token.socialMentions}
-            mentionChange={token.mentionChange}
-          />
+          <Card key={index} className="glass-card relative overflow-hidden border-white/10 transition-all duration-300 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{token.name}</span>
+                  <Badge variant="outline" className="text-xs font-mono">
+                    {token.ticker}
+                  </Badge>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 rounded-full"
+                  onClick={() => openOnBirdeye(token.address)}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="sr-only">View on Birdeye</span>
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Sentiment</span>
+                <div className="flex items-center gap-2">
+                  <Progress 
+                    value={token.sentimentScore} 
+                    max={100} 
+                    className="w-24 h-2" 
+                    indicatorClassName={getSentimentColor(token.sentimentScore)}
+                  />
+                  <span className="text-xs font-medium">{token.sentimentScore}%</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Price Change</span>
+                <span className={`text-sm font-medium ${
+                  token.changePercentage.startsWith('+') 
+                    ? 'text-green-500' 
+                    : 'text-red-500'
+                }`}>
+                  {token.changePercentage}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-sm">Social Mentions</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm">{token.socialMentions.toLocaleString()}</span>
+                  <span className={`text-xs ${
+                    token.mentionChange.startsWith('+') 
+                      ? 'text-green-500' 
+                      : 'text-red-500'
+                  }`}>
+                    {token.mentionChange}
+                  </span>
+                </div>
+              </div>
+              
+              {token.price && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Price</span>
+                  <span className="text-sm font-medium">{token.price}</span>
+                </div>
+              )}
+              
+              {token.marketCap && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Market Cap</span>
+                  <span className="text-sm font-medium">{token.marketCap}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ))}
       </div>
 

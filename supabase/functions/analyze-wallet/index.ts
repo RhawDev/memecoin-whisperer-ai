@@ -35,6 +35,7 @@ serve(async (req: Request) => {
 
     try {
       // Fetch basic wallet data from Solscan
+      console.log("Fetching wallet data from Solscan API");
       const solscanResponse = await fetch(`https://public-api.solscan.io/account/${walletAddress}`, {
         headers: {
           'Accept': 'application/json',
@@ -58,6 +59,7 @@ serve(async (req: Request) => {
       console.log("Wallet data fetched successfully");
       
       // Fetch transaction history
+      console.log("Fetching transaction history");
       const txHistoryResponse = await fetch(
         `https://public-api.solscan.io/account/transactions?account=${walletAddress}&limit=50`,
         {
@@ -77,6 +79,7 @@ serve(async (req: Request) => {
       console.log("Transaction history fetched successfully, count:", txHistory.length);
       
       // Fetch token holdings
+      console.log("Fetching token holdings");
       const tokenHoldingsResponse = await fetch(
         `https://public-api.solscan.io/account/tokens?account=${walletAddress}`,
         {
@@ -272,7 +275,6 @@ serve(async (req: Request) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
   } catch (error: any) {
     console.error("Error processing request:", error);
     

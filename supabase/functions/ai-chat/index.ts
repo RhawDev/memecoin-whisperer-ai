@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.3.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,12 +30,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // Configure OpenAI
-    const openaiConfig = new Configuration({
-      apiKey: OPENAI_API_KEY,
-    });
-    
-    const openai = new OpenAIApi(openaiConfig);
+    console.log("Processing chat request with messages:", JSON.stringify(messages.slice(-1)));
     
     // Choose the system prompt based on the requested chat type
     let systemPrompt = "";
@@ -70,24 +65,47 @@ Avoid making specific financial predictions or giving financial advice that coul
       systemPrompt = "You are a helpful AI assistant specializing in Solana cryptocurrency and memecoins.";
     }
     
-    // Create the completion request
-    const completion = await openai.createChatCompletion({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages
-      ],
-      temperature: 0.7,
-      max_tokens: 800,
-    });
-    
-    const responseMessage = completion.data.choices[0].message;
-    
-    return new Response(
-      JSON.stringify(responseMessage),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
+    try {
+      // Create the OpenAI API request
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages
+          ],
+          temperature: 0.7,
+          max_tokens: 800,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("OpenAI API error:", errorData);
+        throw new Error(`OpenAI API error: ${response.status} - ${errorData || response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const responseMessage = data.choices[0].message;
+      
+      console.log("Successfully generated response");
+      
+      return new Response(
+        JSON.stringify(responseMessage),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (openaiError: any) {
+      console.error("OpenAI API error:", openaiError);
+      return new Response(
+        JSON.stringify({ error: `OpenAI API error: ${openaiError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
   } catch (error: any) {
     console.error("Error in AI chat:", error);
     
