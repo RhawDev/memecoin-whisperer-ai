@@ -44,7 +44,7 @@ const Hero = () => {
       
       <div className="container mx-auto px-4 z-10">
         <div ref={sectionRef} className="reveal max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl mb-6 bg-[linear-gradient(90deg,_blue,_orange,_yellow,_white)] bg-clip-text text-transparent px-[11px] py-0 my-[10px] mx-px font-extrabold text-center md:text-7xl">
+          <h1 className="text-4xl mb-6 bg-[linear-gradient(90deg,_blue,_orange,_yellow,_white)] bg-clip-text text-transparent px-[11px] py-0 my-[10px] mx-px text-center font-extrabold md:text-8xl">
             Be the Alpha<br />
             Not Exit Liquidity
           </h1>
