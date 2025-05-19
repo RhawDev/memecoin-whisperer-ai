@@ -49,7 +49,7 @@ const Hero = () => {
             Not Exit Liquidity
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-300 mb-8">
+          <p className="text-xl text-gray-300 mb-8 md:text-xl py-0 my-[16px] mx-[99px] px-0 font-thin">
             Know your trading patterns. Track the meme market. Win more.
           </p>
           
