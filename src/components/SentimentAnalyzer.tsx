@@ -176,11 +176,11 @@ const SentimentAnalyzer = () => {
                 <div className="text-2xl font-bold">{currentSentiment.tokens_launched}</div>
               </div>
               <div className="bg-white/5 rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Tokens {'>'}$100K Cap</div>
+                <div className="text-sm text-gray-400 mb-1">Tokens &gt;$100K Cap</div>
                 <div className="text-2xl font-bold">{currentSentiment.tokens_over_100k}</div>
               </div>
               <div className="bg-white/5 rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Tokens {'>'}$1M Cap</div>
+                <div className="text-sm text-gray-400 mb-1">Tokens &gt;$1M Cap</div>
                 <div className="text-2xl font-bold">{currentSentiment.tokens_over_1m}</div>
               </div>
             </div>
