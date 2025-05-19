@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, X, AlertTriangle, Twitter, ExternalLink, RefreshCcw } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
 
 const tweetSchema = z.object({
@@ -101,7 +101,7 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
       {
         id: generateTwitterId(),
         handle: '@elonmusk',
-        content: 'The future currency of Earth will be crypto. Know which ones will win — that's the real question.',
+        content: 'The future currency of Earth will be crypto. Know which ones will win — that\'s the real question.',
         timestamp: getRelativeTime(Math.floor(Math.random() * 30) + 10),
         likes: 32546,
         retweets: 7832,
@@ -110,7 +110,7 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
       {
         id: generateTwitterId(),
         handle: '@VitalikButerin',
-        content: 'There's a big difference between tokens with genuine utility and those that are purely speculative. Always look at what problem a project is actually solving.',
+        content: 'There\'s a big difference between tokens with genuine utility and those that are purely speculative. Always look at what problem a project is actually solving.',
         timestamp: getRelativeTime(Math.floor(Math.random() * 60) + 60),
         likes: 18945,
         retweets: 3567,
@@ -146,7 +146,7 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
       {
         id: generateTwitterId(),
         handle: '@tarekroussian',
-        content: 'Watching WIF's performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
+        content: 'Watching WIF\'s performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
         timestamp: getRelativeTime(Math.floor(Math.random() * 480) + 480),
         likes: 3456,
         retweets: 867,
@@ -190,7 +190,11 @@ const TwitterTracking: React.FC = () => {
       setHandles(data as TwitterHandle[]);
     } catch (error: any) {
       console.error('Error fetching Twitter handles:', error);
-      toast.error('Failed to load your tracked Twitter handles');
+      toast({
+        title: "Error",
+        description: "Failed to load your tracked Twitter handles",
+        variant: "destructive"
+      });
     }
   };
 
@@ -201,7 +205,11 @@ const TwitterTracking: React.FC = () => {
       setRecentTweets(tweets);
     } catch (error: any) {
       console.error('Error fetching tweets:', error);
-      toast.error('Failed to load recent tweets');
+      toast({
+        title: "Error",
+        description: "Failed to load recent tweets",
+        variant: "destructive"
+      });
     } finally {
       setIsLoadingTweets(false);
     }
@@ -212,7 +220,11 @@ const TwitterTracking: React.FC = () => {
       setIsLoading(true);
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
-        toast.error('You must be logged in to track Twitter handles');
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to track Twitter handles",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -227,19 +239,30 @@ const TwitterTracking: React.FC = () => {
 
       if (error) {
         if (error.code === '23505') { // Unique violation
-          toast.error('You are already tracking this Twitter handle');
+          toast({
+            title: "Already tracking",
+            description: "You are already tracking this Twitter handle",
+            variant: "destructive"
+          });
         } else {
           throw error;
         }
         return;
       }
 
-      toast.success(`Now tracking ${values.handle}`);
+      toast({
+        title: "Success",
+        description: `Now tracking ${values.handle}`,
+      });
       form.reset();
       fetchHandles();
     } catch (error: any) {
       console.error('Error adding Twitter handle:', error);
-      toast.error('Failed to add Twitter handle');
+      toast({
+        title: "Error",
+        description: "Failed to add Twitter handle",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -257,13 +280,20 @@ const TwitterTracking: React.FC = () => {
       if (error) throw error;
       
       setHandles(prev => prev.filter(h => h.id !== id));
-      toast.success(`Stopped tracking ${handle}`);
+      toast({
+        title: "Success",
+        description: `Stopped tracking ${handle}`,
+      });
       
       // Refresh tweets when handles change
       fetchRecentTweets();
     } catch (error: any) {
       console.error('Error removing Twitter handle:', error);
-      toast.error('Failed to remove Twitter handle');
+      toast({
+        title: "Error",
+        description: "Failed to remove Twitter handle",
+        variant: "destructive"
+      });
     } finally {
       setIsDeleting(prev => ({ ...prev, [id]: false }));
     }
@@ -276,7 +306,11 @@ const TwitterTracking: React.FC = () => {
 
   const openTweet = (url: string | undefined) => {
     if (!url) {
-      toast.error("Invalid tweet URL");
+      toast({
+        title: "Error",
+        description: "Invalid tweet URL",
+        variant: "destructive"
+      });
       return;
     }
     
