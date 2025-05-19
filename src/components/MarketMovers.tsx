@@ -105,7 +105,7 @@ const MarketMovers: React.FC = () => {
   };
 
   const openOnSolscan = (address: string) => {
-    // Fix URL format to work with Solscan
+    // Fixed URL format to work with Solscan
     window.open(`https://solscan.io/account/${address}`, '_blank');
   };
 
@@ -227,7 +227,7 @@ const MarketMovers: React.FC = () => {
             variant="link" 
             size="sm" 
             className="text-indigo-400 p-0" 
-            onClick={() => window.open('https://solscan.io/top-accounts', '_blank')}
+            onClick={() => window.open('https://solscan.io/tokens', '_blank')}
           >
             View Full Leaderboard
           </Button>

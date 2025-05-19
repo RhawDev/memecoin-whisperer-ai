@@ -4,6 +4,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SentimentAnalyzer from '@/components/SentimentAnalyzer';
 import LaunchMetrics from '@/components/LaunchMetrics';
+import TrendingTokens from '@/components/TrendingTokens';
+import MarketMovers from '@/components/MarketMovers';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Market = () => {
@@ -18,6 +20,8 @@ const Market = () => {
             <TabsList className="bg-white/5 border border-white/10 mb-6 w-full md:w-auto">
               <TabsTrigger value="sentiment">Market Sentiment</TabsTrigger>
               <TabsTrigger value="launches">Launch Metrics</TabsTrigger>
+              <TabsTrigger value="trending">Trending Tokens</TabsTrigger>
+              <TabsTrigger value="movers">Market Movers</TabsTrigger>
             </TabsList>
             
             <TabsContent value="sentiment" className="space-y-6">
@@ -26,6 +30,14 @@ const Market = () => {
             
             <TabsContent value="launches" className="space-y-6">
               <LaunchMetrics />
+            </TabsContent>
+            
+            <TabsContent value="trending" className="space-y-6">
+              <TrendingTokens />
+            </TabsContent>
+            
+            <TabsContent value="movers" className="space-y-6">
+              <MarketMovers />
             </TabsContent>
           </Tabs>
         </div>
