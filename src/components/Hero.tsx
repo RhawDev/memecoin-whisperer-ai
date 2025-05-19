@@ -4,11 +4,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import ParticlesBackground from './ParticlesBackground';
 import { supabase } from '@/integrations/supabase/client';
-
 const Hero = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
@@ -17,22 +15,22 @@ const Hero = () => {
     }, {
       threshold: 0.1
     });
-
     if (sectionRef.current) {
       observer.observe(sectionRef.current);
     }
-
     return () => {
       if (sectionRef.current) {
         observer.unobserve(sectionRef.current);
       }
     };
   }, []);
-
   const handleLaunchApp = async () => {
     // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: {
+        session
+      }
+    } = await supabase.auth.getSession();
     if (session) {
       // If authenticated, go to dashboard
       navigate('/dashboard');
@@ -41,14 +39,12 @@ const Hero = () => {
       navigate('/auth');
     }
   };
-
-  return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+  return <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
       <ParticlesBackground />
       
       <div className="container mx-auto px-4 z-10">
         <div ref={sectionRef} className="reveal max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl font-bold mb-6 md:text-8xl bg-[linear-gradient(90deg,_blue,_orange,_yellow,_white)] bg-clip-text text-transparent px-[11px] py-0 my-[10px] mx-px">
+          <h1 className="text-4xl mb-6 bg-[linear-gradient(90deg,_blue,_orange,_yellow,_white)] bg-clip-text text-transparent px-[11px] py-0 my-[10px] mx-px font-extrabold text-center md:text-7xl">
             Be the Alpha<br />
             Not Exit Liquidity
           </h1>
@@ -95,8 +91,6 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
