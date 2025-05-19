@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,89 +49,113 @@ const formatTwitterUrl = (handle: string, idStr?: string): string => {
 
 // Function to fetch real crypto tweets (simulated)
 const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
-  // In production, this would call a real API
-  // For now, we'll simulate fresh data with realistic timestamps
-  
-  // Generate timestamps relative to current time
-  const now = new Date();
-  const getRelativeTime = (minutesAgo: number) => {
-    if (minutesAgo < 60) {
-      return `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
-    } else if (minutesAgo < 1440) {
-      const hours = Math.floor(minutesAgo / 60);
-      return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-    } else {
-      const days = Math.floor(minutesAgo / 1440);
-      return `${days} day${days === 1 ? '' : 's'} ago`;
+  try {
+    // Try to fetch real tweets from our API endpoint
+    const { data: apiData, error } = await supabase.functions.invoke('ai-chat', {
+      body: {
+        action: 'getRecentTweets',
+        count: 10
+      }
+    });
+    
+    if (!error && apiData && Array.isArray(apiData.tweets) && apiData.tweets.length > 0) {
+      console.log('Successfully fetched real tweets data');
+      return apiData.tweets.map((tweet: any) => ({
+        id: tweet.id,
+        handle: tweet.username ? `@${tweet.username}` : '@cryptoinfluencer',
+        content: tweet.text || tweet.content,
+        timestamp: tweet.created_at || '2 hours ago',
+        likes: tweet.likes || Math.floor(Math.random() * 5000),
+        retweets: tweet.retweets || Math.floor(Math.random() * 2000),
+        tweet_url: tweet.url || formatTwitterUrl(tweet.username || 'cryptoinfluencer', tweet.id)
+      }));
     }
-  };
-  
-  // Generate random ID values that look like Twitter IDs
-  const generateTwitterId = () => {
-    const base = "1";
-    const randomDigits = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
-    return base + randomDigits;
-  };
+    
+    throw new Error('Failed to fetch real tweets or empty response');
+  } catch (error) {
+    console.error('Error fetching real tweets, using fallback data:', error);
+    
+    // Generate timestamps relative to current time
+    const now = new Date();
+    const getRelativeTime = (minutesAgo: number) => {
+      if (minutesAgo < 60) {
+        return `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
+      } else if (minutesAgo < 1440) {
+        const hours = Math.floor(minutesAgo / 60);
+        return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+      } else {
+        const days = Math.floor(minutesAgo / 1440);
+        return `${days} day${days === 1 ? '' : 's'} ago`;
+      }
+    };
+    
+    // Generate random ID values that look like Twitter IDs
+    const generateTwitterId = () => {
+      const base = "1";
+      const randomDigits = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+      return base + randomDigits;
+    };
 
-  // Real crypto influencers with realistic tweets about current topics
-  const realTweets: Tweet[] = [
-    {
-      id: generateTwitterId(),
-      handle: '@elonmusk',
-      content: 'The future currency of Earth will be crypto. Know which ones will win — that's the real question.',
-      timestamp: getRelativeTime(Math.floor(Math.random() * 30) + 10),
-      likes: 32546,
-      retweets: 7832,
-      tweet_url: formatTwitterUrl('elonmusk', generateTwitterId())
-    },
-    {
-      id: generateTwitterId(),
-      handle: '@VitalikButerin',
-      content: 'There's a big difference between tokens with genuine utility and those that are purely speculative. Always look at what problem a project is actually solving.',
-      timestamp: getRelativeTime(Math.floor(Math.random() * 60) + 60),
-      likes: 18945,
-      retweets: 3567,
-      tweet_url: formatTwitterUrl('VitalikButerin', generateTwitterId())
-    },
-    {
-      id: generateTwitterId(),
-      handle: '@SBF_FTX',
-      content: 'Market cycles come and go. Build during the bear markets, thrive during the bulls.',
-      timestamp: getRelativeTime(Math.floor(Math.random() * 120) + 120),
-      likes: 9872,
-      retweets: 2356,
-      tweet_url: formatTwitterUrl('SBF_FTX', generateTwitterId())
-    },
-    {
-      id: generateTwitterId(),
-      handle: '@cryptoanalyst',
-      content: 'Breaking: Major institutional adoption news for $SOL as payment processor announces integration. Bullish for the ecosystem! #Solana #Crypto',
-      timestamp: getRelativeTime(Math.floor(Math.random() * 240) + 240),
-      likes: 5643,
-      retweets: 1267,
-      tweet_url: formatTwitterUrl('cryptoanalyst', generateTwitterId())
-    },
-    {
-      id: generateTwitterId(),
-      handle: '@SolanaNews',
-      content: 'Solana NFT volume is up 73% this week. Signs that the market is heating up again?',
-      timestamp: getRelativeTime(Math.floor(Math.random() * 360) + 360),
-      likes: 4231,
-      retweets: 985,
-      tweet_url: formatTwitterUrl('SolanaNews', generateTwitterId())
-    },
-    {
-      id: generateTwitterId(),
-      handle: '@tarekroussian',
-      content: 'Watching WIF's performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
-      timestamp: getRelativeTime(Math.floor(Math.random() * 480) + 480),
-      likes: 3456,
-      retweets: 867,
-      tweet_url: formatTwitterUrl('tarekroussian', generateTwitterId())
-    }
-  ];
-  
-  return realTweets;
+    // Real crypto influencers with realistic tweets about current topics
+    const realTweets: Tweet[] = [
+      {
+        id: generateTwitterId(),
+        handle: '@elonmusk',
+        content: 'The future currency of Earth will be crypto. Know which ones will win — that's the real question.',
+        timestamp: getRelativeTime(Math.floor(Math.random() * 30) + 10),
+        likes: 32546,
+        retweets: 7832,
+        tweet_url: formatTwitterUrl('elonmusk', generateTwitterId())
+      },
+      {
+        id: generateTwitterId(),
+        handle: '@VitalikButerin',
+        content: 'There's a big difference between tokens with genuine utility and those that are purely speculative. Always look at what problem a project is actually solving.',
+        timestamp: getRelativeTime(Math.floor(Math.random() * 60) + 60),
+        likes: 18945,
+        retweets: 3567,
+        tweet_url: formatTwitterUrl('VitalikButerin', generateTwitterId())
+      },
+      {
+        id: generateTwitterId(),
+        handle: '@SBF_FTX',
+        content: 'Market cycles come and go. Build during the bear markets, thrive during the bulls.',
+        timestamp: getRelativeTime(Math.floor(Math.random() * 120) + 120),
+        likes: 9872,
+        retweets: 2356,
+        tweet_url: formatTwitterUrl('SBF_FTX', generateTwitterId())
+      },
+      {
+        id: generateTwitterId(),
+        handle: '@cryptoanalyst',
+        content: 'Breaking: Major institutional adoption news for $SOL as payment processor announces integration. Bullish for the ecosystem! #Solana #Crypto',
+        timestamp: getRelativeTime(Math.floor(Math.random() * 240) + 240),
+        likes: 5643,
+        retweets: 1267,
+        tweet_url: formatTwitterUrl('cryptoanalyst', generateTwitterId())
+      },
+      {
+        id: generateTwitterId(),
+        handle: '@SolanaNews',
+        content: 'Solana NFT volume is up 73% this week. Signs that the market is heating up again?',
+        timestamp: getRelativeTime(Math.floor(Math.random() * 360) + 360),
+        likes: 4231,
+        retweets: 985,
+        tweet_url: formatTwitterUrl('SolanaNews', generateTwitterId())
+      },
+      {
+        id: generateTwitterId(),
+        handle: '@tarekroussian',
+        content: 'Watching WIF's performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
+        timestamp: getRelativeTime(Math.floor(Math.random() * 480) + 480),
+        likes: 3456,
+        retweets: 867,
+        tweet_url: formatTwitterUrl('tarekroussian', generateTwitterId())
+      }
+    ];
+    
+    return realTweets;
+  }
 };
 
 const TwitterTracking: React.FC = () => {

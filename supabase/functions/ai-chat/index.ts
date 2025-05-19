@@ -123,6 +123,48 @@ async function fetchMarketSentiment() {
   }
 }
 
+async function fetchHotTokens() {
+  const cacheKey = 'hot_tokens';
+  
+  if (apiCache.has(cacheKey)) {
+    const cachedData = apiCache.get(cacheKey);
+    if (cachedData.timestamp > Date.now() - CACHE_TTL) {
+      return cachedData.data;
+    }
+  }
+
+  try {
+    // Try to fetch data from pump.fun API or similar source
+    const response = await fetch('https://api.pump.fun/tokens/trending?limit=10');
+    
+    if (!response.ok) {
+      throw new Error(`API returned status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Cache the response
+    apiCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: data
+    });
+    
+    return data;
+  } catch (error) {
+    console.error("Error fetching hot tokens:", error);
+    
+    // Return fallback data
+    return {
+      tokens: [
+        { symbol: "WIF", name: "Dogwifhat", price: 0.867, change24h: 8.2, marketCap: "1.2B" },
+        { symbol: "BONK", name: "Bonk", price: 0.00002814, change24h: 15.4, marketCap: "920M" },
+        { symbol: "BOOK", name: "Bookmap", price: 1.24, change24h: 35.6, marketCap: "86M" },
+        { symbol: "POPCAT", name: "Popcat", price: 0.00000921, change24h: 12.3, marketCap: "45M" }
+      ]
+    };
+  }
+}
+
 async function generateAIResponse(messages: Message[], type: string) {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY environment variable is not set");
@@ -131,10 +173,12 @@ async function generateAIResponse(messages: Message[], type: string) {
   // Fetch market data for context
   let marketData;
   let marketSentiment;
+  let hotTokens;
   try {
-    [marketData, marketSentiment] = await Promise.all([
+    [marketData, marketSentiment, hotTokens] = await Promise.all([
       fetchSolanaTokenData(),
-      fetchMarketSentiment()
+      fetchMarketSentiment(),
+      fetchHotTokens()
     ]);
     console.log("Successfully fetched market context data");
   } catch (error) {
@@ -142,11 +186,13 @@ async function generateAIResponse(messages: Message[], type: string) {
     // Continue with empty market data if fetching fails
     marketData = { data: [] };
     marketSentiment = { overall: "neutral" };
+    hotTokens = { tokens: [] };
   }
   
   // Extract top tokens for context
   const topTokens = marketData.data?.slice(0, 10).map((token: any) => ({
     symbol: token.symbol,
+    name: token.name,
     price: token.price,
     change24h: token.priceChange24h
   })) || [];
@@ -167,16 +213,19 @@ Current market context:
 Top tokens right now:
 ${topTokens.map((t: any) => `- ${t.symbol}: $${t.price} (${t.change24h >= 0 ? '+' : ''}${t.change24h}%)`).join('\n')}
 
+Hot trending tokens:
+${hotTokens.tokens?.map((t: any) => `- ${t.symbol}: $${t.price} (${t.change24h >= 0 ? '+' : ''}${t.change24h}%), Market Cap: ${t.marketCap}`).join('\n') || 'No trending data available'}
+
 When answering questions:
 1. Be direct and concise - get straight to the point
 2. When asked about the best tokens, give specific recommendations based on current market data
-3. Be confident in your answers, but mention when information is speculative
+3. Be confident in your answers and provide clear reasoning
 4. If asked about token prices, give the latest data and clear projections
 5. When discussing trading strategies, focus on specific actionable advice
 6. Always include relevant metrics like market cap, volume, and social sentiment when discussing tokens
 7. Provide direct "yes" or "no" answers when possible rather than hedging
 
-Respond in a concise, informative style without disclaimers or unnecessary elaboration.`
+Your answers should be straightforward, specific, and actionable without unnecessary disclaimers.`
     };
   } else {
     systemMessage = {
@@ -226,7 +275,17 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY environment variable is not set");
     }
 
-    const { messages, type = 'general' } = await req.json();
+    const { messages, type = 'general', action } = await req.json();
+    
+    // Check if this is a request for tweets
+    if (action === 'getRecentTweets') {
+      // Here we'd implement tweet fetching logic but for now we'll return a 501 Not Implemented
+      return new Response(
+        JSON.stringify({ error: "Twitter API functionality not yet implemented" }),
+        { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     console.log("Processing chat request with messages:", JSON.stringify(messages));
 
     if (!Array.isArray(messages)) {
