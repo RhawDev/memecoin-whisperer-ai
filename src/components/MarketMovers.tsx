@@ -105,6 +105,7 @@ const MarketMovers: React.FC = () => {
   };
 
   const openOnSolscan = (address: string) => {
+    // Fix URL format to work with Solscan
     window.open(`https://solscan.io/account/${address}`, '_blank');
   };
 

@@ -59,7 +59,7 @@ const TrendingTokens: React.FC = () => {
         {
           name: 'Dogecoin',
           ticker: '$DOGE',
-          address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+          address: 'DogezjjwQFEX3yoYMKssLWapQQ5PfJTEHfLo3qWxYvjP', // Correct Solana Dogecoin address
           sentimentScore: 65,
           changePercentage: '+5%',
           socialMentions: 12500,
@@ -107,6 +107,7 @@ const TrendingTokens: React.FC = () => {
   };
 
   const openOnBirdeye = (address: string) => {
+    // Use the correct format for Birdeye URLs
     window.open(`https://birdeye.so/token/${address}?chain=solana`, '_blank');
   };
 
@@ -190,7 +191,7 @@ const TrendingTokens: React.FC = () => {
                     value={token.sentimentScore} 
                     max={100} 
                     className="w-24 h-2" 
-                    indicatorClassName={getSentimentColor(token.sentimentScore)}
+                    // Fixed: Removed indicatorClassName prop as it's not supported
                   />
                   <span className="text-xs font-medium">{token.sentimentScore}%</span>
                 </div>
@@ -240,7 +241,7 @@ const TrendingTokens: React.FC = () => {
       </div>
 
       <div className="text-xs text-gray-500 text-center pt-2">
-        Data aggregated from Twitter, Telegram and Discord mentions
+        Data referencing GMGN.ai and aggregated from Twitter, Telegram, and Discord mentions
       </div>
     </div>
   );

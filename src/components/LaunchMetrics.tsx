@@ -24,6 +24,7 @@ const LaunchMetrics: React.FC = () => {
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="detailed">Detailed Stats</TabsTrigger>
+              <TabsTrigger value="recent">Recent Launches</TabsTrigger>
             </TabsList>
             
             <TabsContent value="overview" className="mt-4">
@@ -37,7 +38,7 @@ const LaunchMetrics: React.FC = () => {
                   </div>
                 )}
                 <iframe 
-                  src="https://dune.com/embeds/3357226/5623323" 
+                  src="https://dune.com/embeds/3144926/5292559" 
                   width="100%" 
                   height="400" 
                   className={`rounded-md ${embedLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -61,12 +62,36 @@ const LaunchMetrics: React.FC = () => {
                   </div>
                 )}
                 <iframe 
-                  src="https://dune.com/embeds/3357226/5623344" 
+                  src="https://dune.com/embeds/3144960/5292619" 
                   width="100%" 
                   height="400" 
                   className={`rounded-md ${embedLoaded ? 'opacity-100' : 'opacity-0'}`}
                   onLoad={() => setEmbedLoaded(true)}
                   title="PumpFun Detailed Stats"
+                />
+              </div>
+              <div className="text-xs text-gray-500 text-center">
+                Data powered by Dune Analytics
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="recent" className="mt-4 space-y-6">
+              <div className="relative h-[400px] rounded-md overflow-hidden border border-white/10 bg-black/50 mb-4">
+                {!embedLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                      <p className="text-gray-400">Loading Dune Analytics data...</p>
+                    </div>
+                  </div>
+                )}
+                <iframe 
+                  src="https://dune.com/embeds/3144928/5292563" 
+                  width="100%" 
+                  height="400" 
+                  className={`rounded-md ${embedLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => setEmbedLoaded(true)}
+                  title="PumpFun Recent Launches"
                 />
               </div>
               <div className="text-xs text-gray-500 text-center">

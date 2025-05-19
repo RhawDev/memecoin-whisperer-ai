@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -5,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface SentimentChartProps {
   tokenName?: string;
@@ -23,18 +25,19 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
   const [marketSentiment, setMarketSentiment] = useState<string | null>(null);
   const [sentimentAnalysis, setSentimentAnalysis] = useState<string | null>(null);
   const [currentChange, setCurrentChange] = useState(change);
+  const [timeFrame, setTimeFrame] = useState<'24h' | '7d' | '30d'>('24h');
 
   useEffect(() => {
-    fetchSentimentData();
-  }, []);
+    fetchSentimentData(timeFrame);
+  }, [timeFrame]);
 
-  const fetchSentimentData = async () => {
+  const fetchSentimentData = async (period: '24h' | '7d' | '30d') => {
     setIsLoading(true);
     setError(null);
     try {
       const { data, error } = await supabase.functions.invoke('analyze-market', {
         body: {
-          timeframe: '24h',
+          timeframe: period,
           queryType: 'marketSentiment'
         }
       });
@@ -51,24 +54,45 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
       const isNeutral = data.sentiment === 'Neutral';
 
       // Generate chart data
-      const hoursAgo = Array.from({ length: 24 }, (_, i) => {
-        const now = new Date();
-        now.setHours(now.getHours() - 23 + i);
-        return now.getHours() + ':00';
-      });
+      let timePoints;
+      if (period === '24h') {
+        timePoints = Array.from({ length: 24 }, (_, i) => {
+          const now = new Date();
+          now.setHours(now.getHours() - 23 + i);
+          return now.getHours() + ':00';
+        });
+      } else if (period === '7d') {
+        timePoints = Array.from({ length: 7 }, (_, i) => {
+          const now = new Date();
+          now.setDate(now.getDate() - 6 + i);
+          return now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        });
+      } else { // 30d
+        timePoints = Array.from({ length: 30 }, (_, i) => {
+          const now = new Date();
+          now.setDate(now.getDate() - 29 + i);
+          return now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        });
+      }
       
-      const generateTrend = (isBullish: boolean) => {
+      const generateTrend = (isBullish: boolean, timePoints: string[]) => {
         let positive = isBullish ? 55 : 35;
         let negative = isBullish ? 25 : 45;
         const points = [];
-        for (let i = 0; i < 24; i++) {
+        
+        const pointCount = timePoints.length;
+        
+        for (let i = 0; i < pointCount; i++) {
           // Add some variation, with a trend up if bullish
+          // For longer periods, make the trend more pronounced toward the end
+          const progressFactor = i / pointCount; // 0 to 1 as we progress through the timeframe
+          
           if (isBullish) {
-            positive += Math.random() * 6 - 2 + (i > 12 ? 0.5 : 0);
-            negative -= Math.random() * 4 - 2 - (i > 12 ? 0.3 : 0);
+            positive += Math.random() * 6 - 2 + (progressFactor * 8); // Stronger uptrend toward the end
+            negative -= Math.random() * 4 - 2 - (progressFactor * 5); // Decreasing negative sentiment
           } else {
-            positive -= Math.random() * 5 - 2 - (i > 12 ? 0.4 : 0);
-            negative += Math.random() * 5 - 2 + (i > 12 ? 0.4 : 0);
+            positive -= Math.random() * 5 - 2 - (progressFactor * 7); // Decreasing positive sentiment
+            negative += Math.random() * 5 - 2 + (progressFactor * 6); // Increasing negative sentiment
           }
 
           // Keep within bounds
@@ -76,9 +100,10 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
           negative = Math.max(15, Math.min(negative, 60));
 
           // Neutral is whatever's left
-          const neutral = 100 - positive - negative;
+          const neutral = Math.max(5, Math.min(100 - positive - negative, 40));
+          
           points.push({
-            time: hoursAgo[i],
+            time: timePoints[i],
             positive: Math.round(positive),
             negative: Math.round(negative),
             neutral: Math.round(neutral)
@@ -87,12 +112,15 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
         return points;
       };
 
-      // Set the change percentage based on sentiment
+      // Set the change percentage based on sentiment and timeframe
+      // Longer timeframes should have larger overall changes
+      const timeMultiplier = period === '30d' ? 3 : period === '7d' ? 2 : 1;
+      
       if (isBullish) {
-        const changeVal = (Math.random() * 20 + 5).toFixed(1);
+        const changeVal = (Math.random() * 20 + 5 * timeMultiplier).toFixed(1);
         setCurrentChange(`+${changeVal}%`);
       } else if (!isNeutral) {
-        const changeVal = (Math.random() * 15 + 2).toFixed(1);
+        const changeVal = (Math.random() * 15 + 2 * timeMultiplier).toFixed(1);
         setCurrentChange(`-${changeVal}%`);
       } else {
         const changeVal = (Math.random() * 5 - 2.5).toFixed(1);
@@ -100,39 +128,62 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
       }
 
       // Generate and set the chart data
-      const chartData = generateTrend(isBullish);
+      const chartData = generateTrend(isBullish, timePoints);
       setSentimentData(chartData);
     } catch (err: any) {
       console.error("Error fetching sentiment data:", err);
       setError(err.message || "Failed to load market sentiment data");
 
       // Set fallback mock data
-      setSentimentData([
-        { time: '00:00', positive: 45, negative: 25, neutral: 30 },
-        { time: '01:00', positive: 40, negative: 22, neutral: 38 },
-        { time: '02:00', positive: 60, negative: 18, neutral: 22 },
-        { time: '03:00', positive: 58, negative: 20, neutral: 22 },
-        { time: '04:00', positive: 62, negative: 18, neutral: 20 },
-        { time: '05:00', positive: 57, negative: 23, neutral: 20 },
-        { time: '06:00', positive: 55, negative: 25, neutral: 20 },
-        { time: '07:00', positive: 60, negative: 20, neutral: 20 },
-        { time: '08:00', positive: 63, negative: 17, neutral: 20 },
-        { time: '09:00', positive: 60, negative: 15, neutral: 25 },
-        { time: '10:00', positive: 58, negative: 17, neutral: 25 },
-        { time: '11:00', positive: 57, negative: 20, neutral: 23 },
-        { time: '12:00', positive: 60, negative: 19, neutral: 21 },
-        { time: '13:00', positive: 65, negative: 15, neutral: 20 },
-        { time: '14:00', positive: 70, negative: 12, neutral: 18 },
-        { time: '15:00', positive: 68, negative: 14, neutral: 18 },
-        { time: '16:00', positive: 65, negative: 16, neutral: 19 },
-        { time: '17:00', positive: 64, negative: 18, neutral: 18 },
-        { time: '18:00', positive: 63, negative: 17, neutral: 20 },
-        { time: '19:00', positive: 65, negative: 15, neutral: 20 },
-        { time: '20:00', positive: 67, negative: 13, neutral: 20 },
-        { time: '21:00', positive: 65, negative: 15, neutral: 20 },
-        { time: '22:00', positive: 63, negative: 17, neutral: 20 },
-        { time: '23:00', positive: 60, negative: 20, neutral: 20 }
-      ]);
+      const mockDataGenerator = (period: '24h' | '7d' | '30d') => {
+        if (period === '24h') {
+          return [
+            { time: '00:00', positive: 45, negative: 25, neutral: 30 },
+            { time: '03:00', positive: 58, negative: 20, neutral: 22 },
+            { time: '06:00', positive: 55, negative: 25, neutral: 20 },
+            { time: '09:00', positive: 60, negative: 15, neutral: 25 },
+            { time: '12:00', positive: 60, negative: 19, neutral: 21 },
+            { time: '15:00', positive: 68, negative: 14, neutral: 18 },
+            { time: '18:00', positive: 63, negative: 17, neutral: 20 },
+            { time: '21:00', positive: 65, negative: 15, neutral: 20 },
+            { time: '23:00', positive: 60, negative: 20, neutral: 20 }
+          ];
+        } else if (period === '7d') {
+          // Generate dates for the last 7 days
+          const dates = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - 6 + i);
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          });
+          
+          return [
+            { time: dates[0], positive: 48, negative: 32, neutral: 20 },
+            { time: dates[1], positive: 52, negative: 28, neutral: 20 },
+            { time: dates[2], positive: 55, negative: 25, neutral: 20 },
+            { time: dates[3], positive: 60, negative: 20, neutral: 20 },
+            { time: dates[4], positive: 62, negative: 18, neutral: 20 },
+            { time: dates[5], positive: 65, negative: 15, neutral: 20 },
+            { time: dates[6], positive: 68, negative: 12, neutral: 20 }
+          ];
+        } else { // 30d
+          // Generate simplified 30-day data (showing key points only for readability)
+          const dates = Array.from({ length: 5 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - 29 + i * 7);
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          });
+          
+          return [
+            { time: dates[0], positive: 40, negative: 40, neutral: 20 },
+            { time: dates[1], positive: 45, negative: 35, neutral: 20 },
+            { time: dates[2], positive: 55, negative: 25, neutral: 20 },
+            { time: dates[3], positive: 60, negative: 20, neutral: 20 },
+            { time: dates[4], positive: 68, negative: 12, neutral: 20 }
+          ];
+        }
+      };
+      
+      setSentimentData(mockDataGenerator(period));
       
       // Set fallback sentiment
       setMarketSentiment('Bullish');
@@ -152,19 +203,27 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
             {tokenName} Sentiment
           </CardTitle>
           <p className="text-sm text-gray-400 mt-1">
-            {tokenTicker} sentiment analysis over past 24 hours
+            {tokenTicker} sentiment analysis over past {timeFrame === '24h' ? '24 hours' : timeFrame === '7d' ? '7 days' : '30 days'}
           </p>
         </div>
         <div className="flex items-center space-x-4">
           <div className={`px-3 py-1 rounded-full text-sm ${isPositiveChange ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
             {currentChange}
           </div>
-          <Button size="icon" variant="outline" onClick={fetchSentimentData} disabled={isLoading} className="h-8 w-8">
+          <Button size="icon" variant="outline" onClick={() => fetchSentimentData(timeFrame)} disabled={isLoading} className="h-8 w-8">
             {isLoading ? <Spinner size="sm" /> : <RefreshCcw className="h-3.5 w-3.5" />}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="24h" value={timeFrame} onValueChange={(v) => setTimeFrame(v as '24h' | '7d' | '30d')} className="mb-4">
+          <TabsList className="grid grid-cols-3 w-[200px] mx-auto">
+            <TabsTrigger value="24h">24h</TabsTrigger>
+            <TabsTrigger value="7d">7d</TabsTrigger>
+            <TabsTrigger value="30d">30d</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="text-center">
@@ -178,7 +237,7 @@ const SentimentChart: React.FC<SentimentChartProps> = ({
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart 
                   data={sentimentData} 
-                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                  margin={{ top: 5, right: 25, left: 5, bottom: 5 }}
                 >
                   <XAxis 
                     dataKey="time" 

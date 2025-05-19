@@ -31,6 +31,7 @@ type Tweet = {
   timestamp: string;
   likes?: number;
   retweets?: number;
+  tweet_url?: string; // Added URL field
 };
 
 const TwitterTracking = () => {
@@ -75,7 +76,7 @@ const TwitterTracking = () => {
       // Simulate loading real Twitter data
       // In a real implementation, this would call a Supabase edge function to fetch Twitter data
       setTimeout(() => {
-        // Mock data with real tweets format
+        // Mock data with real tweets format including URLs
         const mockTweets: Tweet[] = [
           {
             id: '1',
@@ -83,7 +84,8 @@ const TwitterTracking = () => {
             content: 'Dogecoin to the moon! 🚀 #cryptocurrency #memecoin',
             timestamp: '2 hours ago',
             likes: 45678,
-            retweets: 8912
+            retweets: 8912,
+            tweet_url: 'https://twitter.com/elonmusk/status/1389961646857531397'
           },
           {
             id: '2',
@@ -91,7 +93,8 @@ const TwitterTracking = () => {
             content: 'Excited about the latest ETH developments. Great things coming for the ecosystem.',
             timestamp: '5 hours ago',
             likes: 28345,
-            retweets: 4532
+            retweets: 4532,
+            tweet_url: 'https://twitter.com/VitalikButerin/status/1387848084746502147'
           },
           {
             id: '3',
@@ -99,15 +102,17 @@ const TwitterTracking = () => {
             content: 'Breaking: Major adoption news for $SOL as payment processor announces integration. #Solana #Crypto',
             timestamp: '1 day ago',
             likes: 12456,
-            retweets: 3245
+            retweets: 3245,
+            tweet_url: 'https://twitter.com/CryptoNews/status/1389973618435596292'
           },
           {
             id: '4',
-            handle: '@SBF_FTX',
+            handle: '@SolBlaze',
             content: 'The future of crypto is bright. Working on some exciting new projects. Stay tuned!',
             timestamp: '2 days ago',
             likes: 9823,
-            retweets: 1456
+            retweets: 1456,
+            tweet_url: 'https://twitter.com/SolBlaze/status/1389961646857531400'
           }
         ];
         setRecentTweets(mockTweets);
@@ -185,6 +190,18 @@ const TwitterTracking = () => {
   const openTwitterProfile = (handle: string) => {
     const username = handle.startsWith('@') ? handle.substring(1) : handle;
     window.open(`https://twitter.com/${username}`, '_blank');
+  };
+
+  const openTweet = (url: string | undefined) => {
+    if (!url) {
+      // Use X.com domain for new links
+      window.open('https://x.com', '_blank');
+      return;
+    }
+    
+    // Update any old twitter.com URLs to x.com
+    const updatedUrl = url.replace('twitter.com', 'x.com');
+    window.open(updatedUrl, '_blank');
   };
 
   return (
@@ -317,8 +334,8 @@ const TwitterTracking = () => {
                   </div>
                   <p className="mt-2 text-gray-300">{tweet.content}</p>
                   
-                  {(tweet.likes !== undefined || tweet.retweets !== undefined) && (
-                    <div className="mt-2 flex items-center space-x-4 text-xs text-gray-400">
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center space-x-4 text-xs text-gray-400">
                       {tweet.likes !== undefined && (
                         <div className="flex items-center">
                           <span>❤️ {tweet.likes.toLocaleString()}</span>
@@ -330,7 +347,16 @@ const TwitterTracking = () => {
                         </div>
                       )}
                     </div>
-                  )}
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-blue-400 hover:text-blue-300 p-1 h-auto"
+                      onClick={() => openTweet(tweet.tweet_url)}
+                    >
+                      View Tweet <ExternalLink className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
