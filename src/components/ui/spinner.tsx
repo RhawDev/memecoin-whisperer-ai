@@ -25,7 +25,9 @@ export const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
         role="status"
         aria-label="loading"
         {...props}
-      />
+      >
+        <span className="sr-only">Loading...</span>
+      </div>
     );
   }
 );

@@ -1,222 +1,187 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Spinner } from '@/components/ui/spinner';
+import { SendHorizontal, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { Spinner } from '@/components/ui/spinner';
+import { toast } from 'sonner';
 
 type Message = {
-  id: number;
-  isBot: boolean;
+  id: string;
+  role: 'user' | 'assistant';
   content: string;
-  timestamp: string;
-}
+  timestamp: Date;
+};
 
 const ChatInterface: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      isBot: true,
-      content: "Hello! I'm MEMESENSE AI. Ask me about memecoin market sentiment, specific tokens, or trading advice.",
-      timestamp: "Just now"
-    }
-  ]);
-  
   const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Scroll to bottom whenever messages change
+
+  // Initial greeting message
+  useEffect(() => {
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: 'Hello! I\'m Memesense AI, your personal assistant for analyzing Solana memecoin trends and wallet performance. How can I help you today?',
+        timestamp: new Date()
+      }
+    ]);
+  }, []);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  const handleSend = async () => {
-    if (input.trim() === '' || isLoading) return;
-    
-    // Format user input by adding $ symbol if it looks like a token name without it
-    let processedInput = input;
-    const potentialTokenMatch = input.match(/\b([A-Z]{3,})\b/g);
-    if (potentialTokenMatch) {
-      potentialTokenMatch.forEach(token => {
-        // Don't add $ if it's a common English word
-        const commonWords = ['THE', 'AND', 'FOR', 'WHAT', 'WHERE', 'WHEN', 'HOW', 'WHY'];
-        if (!commonWords.includes(token)) {
-          processedInput = processedInput.replace(new RegExp(`\\b${token}\\b`, 'g'), `$${token}`);
-        }
-      });
-    }
-    
-    // Add user message
-    const userMsg: Message = {
-      id: Date.now(),
-      isBot: false,
-      content: processedInput,
-      timestamp: "Just now"
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    // Add user message to chat
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+      timestamp: new Date()
     };
     
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
-    
-    // Determine query type based on message content
-    let queryType = 'general';
-    let timeframe = null;
-    let tokenTicker = null;
-    
-    if (processedInput.includes('$')) {
-      queryType = 'tokenAnalysis';
-      // Extract token ticker
-      const tickerMatch = processedInput.match(/\$([A-Z]+)/i);
-      if (tickerMatch && tickerMatch[1]) {
-        tokenTicker = tickerMatch[1];
-      }
-    }
-    
-    if (
-      processedInput.toLowerCase().includes('market') || 
-      processedInput.toLowerCase().includes('sentiment') ||
-      processedInput.toLowerCase().includes('trend')
-    ) {
-      queryType = 'marketSentiment';
-      timeframe = '24h';
-    }
-    
-    if (
-      processedInput.toLowerCase().includes('trading') ||
-      processedInput.toLowerCase().includes('wallet') ||
-      processedInput.toLowerCase().includes('portfolio') ||
-      processedInput.toLowerCase().includes('strategy')
-    ) {
-      queryType = 'walletFeedback';
-    }
-    
-    // Send request to our analyze-market function
+
     try {
-      console.log(`Sending request to analyze-market with type: ${queryType}`);
-      
-      const { data, error } = await supabase.functions.invoke('analyze-market', {
+      // Call OpenAI via our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: { 
-          timeframe,
-          tokenTicker,
-          queryType
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          type: 'meme-advisor'
         }
       });
       
-      if (error) {
-        throw new Error(`Function error: ${error.message}`);
-      }
+      if (error) throw new Error(error.message);
+      if (!data || !data.content) throw new Error('Invalid response from AI');
       
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-      
-      // Add AI response
+      // Add AI response to chat
       const aiMessage: Message = {
-        id: Date.now() + 1,
-        isBot: true,
-        content: data?.analysis || "I'm sorry, I couldn't analyze that properly.",
-        timestamp: "Just now"
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: data.content,
+        timestamp: new Date()
       };
       
       setMessages(prev => [...prev, aiMessage]);
       
-    } catch (error) {
-      console.error("AI Chat error:", error);
+    } catch (err: any) {
+      console.error("Error in AI chat:", err);
+      toast.error('Failed to get a response from the AI. Please try again.');
       
-      // Add error message from the AI
-      const errorMsg: Message = {
-        id: Date.now() + 1,
-        isBot: true,
-        content: `I'm sorry, I encountered an error while analyzing: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
-        timestamp: "Just now"
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, errorMsg]);
-      
-      toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Unable to process your request",
-        variant: "destructive",
-      });
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card className="glass-card flex flex-col h-[600px]">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl font-bold flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-green-500"></span>
-          MEMESENSE AI Chat
+    <Card className="glass-card h-full">
+      <CardHeader className="border-b border-white/10">
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-indigo-500" />
+          Memesense AI Chat
         </CardTitle>
-        <div className="text-xs text-blue-400">Market Analysis • Token Insights • Trading Tips</div>
       </CardHeader>
-      <CardContent className="flex flex-col flex-grow p-4 pt-0">
-        <ScrollArea className="flex-grow pr-4 mb-4 h-[450px]">
+      <CardContent className="p-0 flex flex-col h-full">
+        <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
-            {messages.map(message => (
+            {messages.map((message) => (
               <div 
                 key={message.id} 
-                className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div 
-                  className={`max-w-[85%] rounded-lg p-3 ${
-                    message.isBot 
-                      ? 'bg-gray-800 text-white' 
-                      : 'bg-indigo-600 text-white'
+                  className={`flex items-start gap-2 max-w-[80%] ${
+                    message.role === 'user' ? 'flex-row-reverse' : ''
                   }`}
                 >
-                  {message.isBot && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-semibold bg-blue-500 text-white px-1.5 py-0.5 rounded">AI</span>
-                      <span className="text-xs text-gray-400">{message.timestamp}</span>
+                  <Avatar className={`h-8 w-8 ${
+                    message.role === 'user' 
+                      ? 'bg-indigo-700' 
+                      : 'bg-gradient-to-br from-purple-500 to-indigo-500'
+                  }`}>
+                    <div className="flex h-full items-center justify-center text-xs font-medium">
+                      {message.role === 'user' ? 'You' : 'AI'}
                     </div>
-                  )}
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  </Avatar>
+                  
+                  <div 
+                    className={`rounded-lg p-3 ${
+                      message.role === 'user' 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-gray-800/50 border border-white/10'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                  </div>
                 </div>
               </div>
             ))}
             
             {isLoading && (
               <div className="flex justify-start">
-                <div className="max-w-[85%] rounded-lg p-4 bg-gray-800 text-white">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-semibold bg-blue-500 text-white px-1.5 py-0.5 rounded">AI</span>
-                    <span className="text-xs text-gray-400">Typing...</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse delay-100"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-300 animate-pulse delay-200"></div>
+                <div className="flex items-start gap-2 max-w-[80%]">
+                  <Avatar className="h-8 w-8 bg-gradient-to-br from-purple-500 to-indigo-500">
+                    <div className="flex h-full items-center justify-center text-xs font-medium">
+                      AI
+                    </div>
+                  </Avatar>
+                  
+                  <div className="rounded-lg p-3 bg-gray-800/50 border border-white/10">
+                    <Spinner size="sm" />
                   </div>
                 </div>
               </div>
             )}
+            
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
-        <div className="flex gap-2 mt-auto">
-          <Input
-            placeholder="Ask about tokens, market sentiment, or trading advice..."
+        
+        <form 
+          onSubmit={handleSubmit} 
+          className="border-t border-white/10 p-4 flex gap-2"
+        >
+          <Input 
+            placeholder="Ask about market trends, token analysis, or wallet strategies..." 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="bg-gray-900 border-gray-700"
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             disabled={isLoading}
+            className="bg-white/5 border-white/10"
           />
           <Button 
-            onClick={handleSend} 
+            type="submit"
             disabled={isLoading || !input.trim()}
+            className="bg-indigo-600 hover:bg-indigo-700"
           >
-            {isLoading ? <Spinner className="w-4 h-4" /> : 'Send'}
+            {isLoading ? <Spinner size="sm" /> : <SendHorizontal className="h-4 w-4" />}
           </Button>
-        </div>
+        </form>
       </CardContent>
     </Card>
   );

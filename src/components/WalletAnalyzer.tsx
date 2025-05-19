@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
+import { Spinner } from "@/components/ui/spinner";
 
 type WalletProfile = {
   tradingStyle: string;
@@ -27,41 +28,45 @@ const WalletAnalyzer = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
   const [profile, setProfile] = useState<WalletProfile | null>(null);
-  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
     if (!walletAddress) return;
     
     setIsLoading(true);
+    setError(null);
     
     try {
+      console.log("Calling analyze-wallet function with address:", walletAddress);
+      
       // Call our Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('analyze-wallet', {
+      const { data, error: functionError } = await supabase.functions.invoke('analyze-wallet', {
         body: { walletAddress }
       });
       
-      if (error) {
-        throw new Error(error.message || 'Error analyzing wallet');
+      console.log("Function response:", data, "Error:", functionError);
+      
+      if (functionError) {
+        throw new Error(functionError.message || 'Error analyzing wallet');
       }
       
-      if (data.error) {
+      if (data?.error) {
         throw new Error(data.error);
+      }
+      
+      if (!data || !data.profile) {
+        throw new Error('Invalid response from wallet analyzer');
       }
       
       setProfile(data.profile);
       setIsAnalyzed(true);
-      toast({
-        title: "Analysis Complete",
-        description: `Successfully analyzed wallet ${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`,
-      });
+      toast.success(`Successfully analyzed wallet ${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`);
       
-    } catch (error) {
-      console.error("Wallet analysis error:", error);
-      toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Unable to analyze wallet",
-        variant: "destructive",
-      });
+    } catch (err: any) {
+      console.error("Wallet analysis error:", err);
+      setError(err.message || "Unable to analyze wallet");
+      toast.error(err.message || "Unable to analyze wallet");
+      setIsAnalyzed(false);
     } finally {
       setIsLoading(false);
     }
@@ -89,9 +94,25 @@ const WalletAnalyzer = () => {
             disabled={isLoading || !walletAddress}
             className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600"
           >
-            {isLoading ? "Analyzing..." : "Analyze Wallet"}
+            {isLoading ? (
+              <div className="flex items-center">
+                <Spinner size="sm" className="mr-2" />
+                <span>Analyzing...</span>
+              </div>
+            ) : (
+              "Analyze Wallet"
+            )}
           </Button>
         </div>
+        
+        {error && (
+          <div className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-md">
+            <p className="text-red-300">{error}</p>
+            <p className="mt-2 text-sm text-gray-300">
+              Try with a different wallet address or check that the address is correct.
+            </p>
+          </div>
+        )}
       </div>
       
       {isLoading && (
