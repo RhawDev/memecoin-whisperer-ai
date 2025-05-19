@@ -7,153 +7,247 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req: Request) => {
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+// Define today's date for context
+const today = new Date();
+const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+// Cache for API responses to minimize repeated calls
+const apiCache = new Map();
+const CACHE_TTL = 300000; // 5 minutes in milliseconds
+
+interface Message {
+  role: string;
+  content: string;
+}
+
+async function fetchSolanaTokenData() {
+  const cacheKey = 'solana_token_data';
+  
+  // Check if we have cached data that's not expired
+  if (apiCache.has(cacheKey)) {
+    const cachedData = apiCache.get(cacheKey);
+    if (cachedData.timestamp > Date.now() - CACHE_TTL) {
+      console.log("Using cached Solana token data");
+      return cachedData.data;
+    }
+  }
+  
+  try {
+    console.log("Fetching fresh Solana token data from Birdeye API");
+    const response = await fetch('https://public-api.birdeye.so/public/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=50&chain=solana', {
+      headers: {
+        'X-API-KEY': 'Test',
+        'Accept': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Birdeye API returned ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Cache the response
+    apiCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: data
+    });
+    
+    return data;
+  } catch (error) {
+    console.error("Error fetching Solana token data:", error);
+    
+    // Return some basic fallback data if API fails
+    return {
+      data: [
+        { symbol: "SOL", name: "Solana", price: 160, priceChange24h: 2.5 },
+        { symbol: "BONK", name: "Bonk", price: 0.00002814, priceChange24h: 15 },
+        { symbol: "WIF", name: "Dogwifhat", price: 0.867, priceChange24h: 8 },
+        { symbol: "JTO", name: "Jito", price: 3.25, priceChange24h: -1.2 }
+      ]
+    };
+  }
+}
+
+async function fetchMarketSentiment() {
+  const cacheKey = 'market_sentiment';
+  
+  if (apiCache.has(cacheKey)) {
+    const cachedData = apiCache.get(cacheKey);
+    if (cachedData.timestamp > Date.now() - CACHE_TTL) {
+      return cachedData.data;
+    }
+  }
+  
+  try {
+    // For the purpose of this example, we'll simulate market sentiment data
+    // In production, this would call a real API endpoint
+    const sentiment = Math.random() > 0.4 ? "bullish" : "bearish";
+    const sentimentScore = sentiment === "bullish" ? 60 + Math.floor(Math.random() * 30) : 30 + Math.floor(Math.random() * 20);
+    
+    const data = {
+      overall: sentiment,
+      score: sentimentScore,
+      tokensBullish: Math.floor(20 + Math.random() * 30),
+      tokensBearish: Math.floor(10 + Math.random() * 20),
+      topGainer: {
+        symbol: "WIF",
+        change: "+" + (Math.floor(Math.random() * 30) + 10) + "%"
+      },
+      topLoser: {
+        symbol: "SAND",
+        change: "-" + (Math.floor(Math.random() * 20) + 5) + "%"
+      },
+      volume24h: "$" + (Math.floor(Math.random() * 50) + 100) + "M"
+    };
+    
+    apiCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: data
+    });
+    
+    return data;
+  } catch (error) {
+    console.error("Error fetching market sentiment:", error);
+    return {
+      overall: "neutral",
+      score: 50,
+      tokensBullish: 25,
+      tokensBearish: 25,
+      topGainer: { symbol: "WIF", change: "+15%" },
+      topLoser: { symbol: "SAND", change: "-10%" },
+      volume24h: "$120M"
+    };
+  }
+}
+
+async function generateAIResponse(messages: Message[], type: string) {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+  
+  // Fetch market data for context
+  let marketData;
+  let marketSentiment;
+  try {
+    [marketData, marketSentiment] = await Promise.all([
+      fetchSolanaTokenData(),
+      fetchMarketSentiment()
+    ]);
+    console.log("Successfully fetched market context data");
+  } catch (error) {
+    console.error("Error fetching market context:", error);
+    // Continue with empty market data if fetching fails
+    marketData = { data: [] };
+    marketSentiment = { overall: "neutral" };
+  }
+  
+  // Extract top tokens for context
+  const topTokens = marketData.data?.slice(0, 10).map((token: any) => ({
+    symbol: token.symbol,
+    price: token.price,
+    change24h: token.priceChange24h
+  })) || [];
+  
+  // Create system message based on the type of assistant
+  let systemMessage;
+  if (type === 'meme-advisor') {
+    systemMessage = {
+      role: "system",
+      content: `You are Memesense AI, a specialized crypto market assistant focused on Solana memecoins and tokens. Today is ${formattedDate}.
+
+Current market context:
+- Overall market sentiment: ${marketSentiment.overall}
+- Top performing token: ${marketSentiment.topGainer?.symbol || 'Unknown'} (${marketSentiment.topGainer?.change || 'Unknown'})
+- Worst performing token: ${marketSentiment.topLoser?.symbol || 'Unknown'} (${marketSentiment.topLoser?.change || 'Unknown'})
+- 24h trading volume: ${marketSentiment.volume24h || 'Unknown'}
+
+Top tokens right now:
+${topTokens.map((t: any) => `- ${t.symbol}: $${t.price} (${t.change24h >= 0 ? '+' : ''}${t.change24h}%)`).join('\n')}
+
+When answering questions:
+1. Be direct and concise - get straight to the point
+2. When asked about the best tokens, give specific recommendations based on current market data
+3. Be confident in your answers, but mention when information is speculative
+4. If asked about token prices, give the latest data and clear projections
+5. When discussing trading strategies, focus on specific actionable advice
+6. Always include relevant metrics like market cap, volume, and social sentiment when discussing tokens
+7. Provide direct "yes" or "no" answers when possible rather than hedging
+
+Respond in a concise, informative style without disclaimers or unnecessary elaboration.`
+    };
+  } else {
+    systemMessage = {
+      role: "system",
+      content: `You are Memesense AI, a helpful assistant for the Memesense platform that analyzes Solana wallets and the meme market. Today is ${formattedDate}.`
+    };
+  }
+  
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [systemMessage, ...messages],
+        temperature: 0.7,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API error:", errorText);
+      throw new Error(`OpenAI API returned ${response.status}: ${errorText}`);
+    }
+
+    const completion = await response.json();
+    console.log("Successfully generated response");
+    return completion.choices[0].message;
+  } catch (error) {
+    console.error("Error generating AI response:", error);
+    throw error;
+  }
+}
+
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")?.trim();
-    
     if (!OPENAI_API_KEY) {
-      throw new Error("Missing OpenAI API key");
+      throw new Error("OPENAI_API_KEY environment variable is not set");
     }
 
-    const { messages, type = "meme-advisor" } = await req.json();
+    const { messages, type = 'general' } = await req.json();
+    console.log("Processing chat request with messages:", JSON.stringify(messages));
 
-    // Validate input
-    if (!messages || !Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid request format. 'messages' must be an array." }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!Array.isArray(messages)) {
+      throw new Error("Messages must be an array");
     }
 
-    console.log("Processing chat request with messages:", JSON.stringify(messages.slice(-1)));
-    
-    // Fetch current market data from Solscan to provide up-to-date information
-    let marketContext = "";
-    try {
-      // Get SOL price
-      const solPriceResponse = await fetch("https://public-api.solscan.io/market/token/So11111111111111111111111111111111111111112", {
-        headers: { 'Accept': 'application/json' }
-      });
-      
-      if (solPriceResponse.ok) {
-        const solData = await solPriceResponse.json();
-        const currentDate = new Date().toISOString().split('T')[0];
-        marketContext += `As of ${currentDate}, SOL is trading at approximately $${solData.priceUsdt?.toFixed(2) || "unknown"} USD. `;
-      }
-      
-      // Get some trending tokens data - we'll use recent transactions as a proxy
-      marketContext += `Recent memecoin market activity shows increased interest in tokens like BONK, WIF, POPCAT, and BITCH. `;
-      
-      // Add general market sentiment based on the current date
-      const today = new Date();
-      const dayOfMonth = today.getDate();
-      
-      // Use the day of month to create some variation in the sentiment (pseudo-random but consistent for the day)
-      if (dayOfMonth % 3 === 0) {
-        marketContext += "The overall market sentiment appears bullish with increasing volume across major memecoins. ";
-      } else if (dayOfMonth % 3 === 1) {
-        marketContext += "Market sentiment is neutral with mixed performance across various memecoins. ";
-      } else {
-        marketContext += "There are bearish signals in the short term with some profit-taking visible in major memecoins. ";
-      }
-      
-      marketContext += "Note that market conditions change rapidly, especially in the memecoin sector.";
-    } catch (marketErr) {
-      console.warn("Failed to fetch market data:", marketErr);
-      // Continue without market data if fetching fails
-    }
-    
-    // Choose the system prompt based on the requested chat type
-    let systemPrompt = "";
-    
-    if (type === "meme-advisor") {
-      systemPrompt = `You are Memesense AI, a specialized assistant for Solana memecoin investors and traders. 
-You have deep knowledge of:
-- Solana memecoins and tokens
-- Trading strategies for volatile assets
-- On-chain analytics
-- Market sentiment analysis
-- Risk management techniques
-- Current trends in the Solana ecosystem
+    const aiResponse = await generateAIResponse(messages, type);
+    console.log("Successfully generated response");
 
-Current market context (${new Date().toISOString().split('T')[0]}): ${marketContext}
-
-Provide insightful, concise responses that help users understand the memecoin market and make better trading decisions. 
-When appropriate, suggest risk management strategies and remind users about the high-risk nature of memecoins.
-If asked about specific tokens, provide analysis but avoid making specific price predictions or financial advice.`;
-    } else if (type === "wallet-advisor") {
-      systemPrompt = `You are Memesense AI's Wallet Advisor, a specialized assistant for analyzing Solana wallet trading patterns.
-You help users understand their trading behaviors, identify strengths and weaknesses, and suggest improvements.
-Your analysis should focus on:
-- Trading frequency patterns
-- Asset diversification
-- Entry and exit timing
-- Risk management
-- Profit-taking strategies
-- Common behavioral biases
-
-Current market context (${new Date().toISOString().split('T')[0]}): ${marketContext}
-
-Provide personalized, actionable advice based on the user's questions and trading history.
-Avoid making specific financial predictions or giving financial advice that could be construed as promises.`;
-    } else {
-      systemPrompt = `You are a helpful AI assistant specializing in Solana cryptocurrency and memecoins.
-      
-Current market context (${new Date().toISOString().split('T')[0]}): ${marketContext}`;
-    }
-    
-    try {
-      // Create the OpenAI API request
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages
-          ],
-          temperature: 0.7,
-          max_tokens: 800,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("OpenAI API error:", errorData);
-        throw new Error(`OpenAI API error: ${response.status} - ${errorData || response.statusText}`);
-      }
-      
-      const data = await response.json();
-      const responseMessage = data.choices[0].message;
-      
-      console.log("Successfully generated response");
-      
-      return new Response(
-        JSON.stringify(responseMessage),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (openaiError: any) {
-      console.error("OpenAI API error:", openaiError);
-      return new Response(
-        JSON.stringify({ error: `OpenAI API error: ${openaiError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-  } catch (error: any) {
-    console.error("Error in AI chat:", error);
-    
     return new Response(
-      JSON.stringify({ error: error.message || "An error occurred while processing your request" }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(aiResponse),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error: any) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "An error occurred" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     );
   }
 });
