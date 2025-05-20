@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -13,6 +14,7 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  variant?: "default" | "destructive" | "success" | "warning"
 }
 
 const actionTypes = {
@@ -167,6 +169,11 @@ function toast({ ...props }: Toast) {
     update,
   }
 }
+
+// Add variant helper methods
+toast.success = (props: Omit<Toast, "variant">) => toast({ ...props, variant: "success" })
+toast.warning = (props: Omit<Toast, "variant">) => toast({ ...props, variant: "warning" })
+toast.error = (props: Omit<Toast, "variant" | "variant">) => toast({ ...props, variant: "destructive" })
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
