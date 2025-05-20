@@ -170,10 +170,27 @@ function toast({ ...props }: Toast) {
   }
 }
 
-// Add variant helper methods
-toast.success = (props: Omit<Toast, "variant">) => toast({ ...props, variant: "success" })
-toast.warning = (props: Omit<Toast, "variant">) => toast({ ...props, variant: "warning" })
-toast.error = (props: Omit<Toast, "variant" | "variant">) => toast({ ...props, variant: "destructive" })
+// Fix the helper methods to accept string or object
+toast.success = (props: Omit<Toast, "variant"> | string) => {
+  if (typeof props === 'string') {
+    return toast({ description: props, variant: "success" });
+  }
+  return toast({ ...props, variant: "success" });
+};
+
+toast.warning = (props: Omit<Toast, "variant"> | string) => {
+  if (typeof props === 'string') {
+    return toast({ description: props, variant: "warning" });
+  }
+  return toast({ ...props, variant: "warning" });
+};
+
+toast.error = (props: Omit<Toast, "variant"> | string) => {
+  if (typeof props === 'string') {
+    return toast({ description: props, variant: "destructive" });
+  }
+  return toast({ ...props, variant: "destructive" });
+};
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
