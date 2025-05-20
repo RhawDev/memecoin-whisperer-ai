@@ -10,20 +10,72 @@ import LaunchMetrics from '@/components/LaunchMetrics';
 import ChatInterface from '@/components/ChatInterface';
 import TwitterTracking from '@/components/TwitterTracking';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<string>("wallet");
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // This will handle the initial animation
+  // Check authentication and load user data
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Auth error:", error);
+        toast.error("Authentication error. Please log in again.");
+      }
+      
+      if (data?.session) {
+        setIsAuthenticated(true);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
+  // Loading animation effect
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2000);
+    }, 1000); // Reduced from 2000ms to 1000ms for better UX
+    
     return () => clearTimeout(timer);
   }, []);
 
-  // Variants for animating components
+  // Check if API keys are configured and give feedback
+  useEffect(() => {
+    const checkAPIKeys = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-api-keys', {
+          body: {}
+        });
+        
+        if (error) {
+          console.warn("Error checking API keys:", error);
+          return;
+        }
+        
+        if (data.missingKeys && data.missingKeys.length > 0) {
+          toast.warning(
+            `Some API keys are missing: ${data.missingKeys.join(', ')}. Full functionality may be limited.`, 
+            { duration: 6000 }
+          );
+        }
+        
+      } catch (err) {
+        console.log("API check function not available - using mock data");
+      }
+    };
+    
+    if (!isLoading && isAuthenticated) {
+      checkAPIKeys();
+    }
+  }, [isLoading, isAuthenticated]);
+
+  // Animation variants
   const containerVariants = {
     hidden: {
       opacity: 0
@@ -84,7 +136,7 @@ const Dashboard = () => {
             className="flex justify-center space-x-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
           >
             <motion.div 
               className="w-2 h-2 bg-indigo-500 rounded-full" 

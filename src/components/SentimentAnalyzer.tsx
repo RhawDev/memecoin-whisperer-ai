@@ -5,8 +5,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { AlertTriangle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Activity, RefreshCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type SentimentData = {
   period: string;
@@ -18,7 +19,38 @@ type SentimentData = {
   profitable_tokens_percent: number;
 };
 
-const SentimentAnalyzer = () => {
+// Mock data in case the API call fails
+const mockSentimentData = {
+  sentiment24h: {
+    period: '24h',
+    value: 75,
+    sentiment: 'bullish' as 'bullish',
+    tokens_launched: 42,
+    tokens_over_100k: 18,
+    tokens_over_1m: 8,
+    profitable_tokens_percent: 65
+  },
+  sentiment7d: {
+    period: '7d',
+    value: 62,
+    sentiment: 'bullish' as 'bullish',
+    tokens_launched: 124,
+    tokens_over_100k: 58,
+    tokens_over_1m: 22,
+    profitable_tokens_percent: 52
+  },
+  sentiment30d: {
+    period: '30d',
+    value: 48,
+    sentiment: 'neutral' as 'neutral',
+    tokens_launched: 380,
+    tokens_over_100k: 160,
+    tokens_over_1m: 65,
+    profitable_tokens_percent: 43
+  }
+};
+
+const SentimentAnalyzer: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d'>('24h');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +60,7 @@ const SentimentAnalyzer = () => {
     sentiment7d?: SentimentData;
     sentiment30d?: SentimentData;
   }>({});
-
+  
   useEffect(() => {
     fetchSentimentData(timeframe);
   }, [timeframe]);
@@ -38,6 +70,8 @@ const SentimentAnalyzer = () => {
     setError(null);
     
     try {
+      console.log(`Fetching sentiment data for period: ${period}`);
+      
       const { data, error } = await supabase.functions.invoke('analyze-market', {
         body: {
           timeframe: period,
@@ -45,13 +79,46 @@ const SentimentAnalyzer = () => {
         }
       });
       
-      if (error) throw new Error(error.message);
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw new Error(error.message || "Failed to fetch market data");
+      }
       
-      setSentimentData(data);
+      if (data.error) {
+        console.error("Data error:", data.error);
+        throw new Error(data.error);
+      }
+      
+      console.log("Received sentiment data:", data);
+      
+      // If we get valid data, use it
+      if (data && (data.sentiment || data.sentiment24h || data.sentiment7d || data.sentiment30d)) {
+        setSentimentData(data);
+      } else {
+        console.warn("Invalid sentiment data format, using mock data");
+        // If the data format is unexpected, use mock data
+        setSentimentData({
+          sentiment: mockSentimentData[`sentiment${period}` as keyof typeof mockSentimentData],
+          sentiment24h: mockSentimentData.sentiment24h,
+          sentiment7d: mockSentimentData.sentiment7d,
+          sentiment30d: mockSentimentData.sentiment30d
+        });
+        
+        toast.warning("Using simulated market data. Connect APIs for live data.");
+      }
     } catch (err: any) {
       console.error("Error fetching sentiment data:", err);
       setError(err.message || "Failed to fetch market sentiment");
+      
+      // In case of error, use mock data
+      setSentimentData({
+        sentiment: mockSentimentData[`sentiment${period}` as keyof typeof mockSentimentData],
+        sentiment24h: mockSentimentData.sentiment24h,
+        sentiment7d: mockSentimentData.sentiment7d,
+        sentiment30d: mockSentimentData.sentiment30d
+      });
+      
+      toast.error(`Error loading market data: ${err.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +169,10 @@ const SentimentAnalyzer = () => {
   };
 
   // Get the current sentiment based on the selected timeframe
-  const currentSentiment = sentimentData.sentiment;
+  const currentSentiment = sentimentData.sentiment || 
+                          (timeframe === '24h' ? sentimentData.sentiment24h : 
+                           timeframe === '7d' ? sentimentData.sentiment7d : 
+                           sentimentData.sentiment30d);
 
   return (
     <Card className="glass-card w-full overflow-hidden">
@@ -122,7 +192,7 @@ const SentimentAnalyzer = () => {
           )}
         </div>
         
-        <div className="flex space-x-2 mt-4 md:mt-0">
+        <div className="flex items-center space-x-2 mt-4 md:mt-0">
           <Button 
             variant={timeframe === '24h' ? 'default' : 'outline'} 
             size="sm" 
@@ -147,15 +217,28 @@ const SentimentAnalyzer = () => {
           >
             30d
           </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => fetchSentimentData(timeframe)}
+            className="ml-2"
+            title="Refresh data"
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
 
       <CardContent>
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <Spinner className="text-indigo-500" />
+            <div className="text-center">
+              <Spinner className="text-indigo-500 mx-auto mb-4" />
+              <p className="text-gray-400">Loading sentiment data...</p>
+            </div>
           </div>
-        ) : error ? (
+        ) : error && !currentSentiment ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
             <h3 className="text-xl font-medium mb-2">Data Fetch Error</h3>

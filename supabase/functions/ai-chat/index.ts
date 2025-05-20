@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
+import { TwitterApi } from "https://esm.sh/twitter-api-v2@1.15.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,11 @@ const corsHeaders = {
 };
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const TWITTER_CONSUMER_KEY = Deno.env.get("TWITTER_CONSUMER_KEY");
+const TWITTER_CONSUMER_SECRET = Deno.env.get("TWITTER_CONSUMER_SECRET");
+const TWITTER_ACCESS_TOKEN = Deno.env.get("TWITTER_ACCESS_TOKEN");
+const TWITTER_ACCESS_TOKEN_SECRET = Deno.env.get("TWITTER_ACCESS_TOKEN_SECRET");
+const BIRDEYE_API_KEY = Deno.env.get("BIRDEYE_API_KEY") || "Test";
 
 // Define today's date for context
 const today = new Date();
@@ -38,7 +44,7 @@ async function fetchSolanaTokenData() {
     console.log("Fetching fresh Solana token data from Birdeye API");
     const response = await fetch('https://public-api.birdeye.so/public/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=50&chain=solana', {
       headers: {
-        'X-API-KEY': 'Test',
+        'X-API-KEY': BIRDEYE_API_KEY,
         'Accept': 'application/json',
       }
     });
@@ -48,6 +54,7 @@ async function fetchSolanaTokenData() {
     }
     
     const data = await response.json();
+    console.log(`Fetched ${data?.data?.length || 0} tokens from Birdeye`);
     
     // Cache the response
     apiCache.set(cacheKey, {
@@ -134,14 +141,15 @@ async function fetchHotTokens() {
   }
 
   try {
-    // Try to fetch data from pump.fun API or similar source
-    const response = await fetch('https://api.pump.fun/tokens/trending?limit=10');
+    // Try to fetch data from pump.fun API
+    const response = await fetch('https://api.pump.fun/tokens/trending?limit=50');
     
     if (!response.ok) {
       throw new Error(`API returned status ${response.status}`);
     }
     
     const data = await response.json();
+    console.log(`Fetched ${data?.tokens?.length || 0} trending tokens from pump.fun`);
     
     // Cache the response
     apiCache.set(cacheKey, {
@@ -165,6 +173,82 @@ async function fetchHotTokens() {
   }
 }
 
+async function fetchTwitterTrends() {
+  const cacheKey = 'twitter_trends';
+  
+  if (apiCache.has(cacheKey)) {
+    const cachedData = apiCache.get(cacheKey);
+    if (cachedData.timestamp > Date.now() - CACHE_TTL) {
+      console.log("Using cached Twitter trends");
+      return cachedData.data;
+    }
+  }
+  
+  try {
+    console.log("Checking Twitter API credentials");
+    
+    if (!TWITTER_CONSUMER_KEY || !TWITTER_CONSUMER_SECRET || 
+        !TWITTER_ACCESS_TOKEN || !TWITTER_ACCESS_TOKEN_SECRET) {
+      console.log("Twitter API credentials not configured");
+      throw new Error("Twitter API credentials not configured");
+    }
+    
+    // Initialize Twitter client
+    const twitterClient = new TwitterApi({
+      appKey: TWITTER_CONSUMER_KEY,
+      appSecret: TWITTER_CONSUMER_SECRET,
+      accessToken: TWITTER_ACCESS_TOKEN,
+      accessSecret: TWITTER_ACCESS_TOKEN_SECRET,
+    });
+    
+    console.log("Twitter client initialized, fetching trends");
+    
+    // Get recent tweets with crypto hashtags
+    const cryptoSearchTerms = "$SOL OR $WIF OR $JTO OR $BONK OR $BTC OR #Solana OR #BTC OR #Bitcoin OR memecoin OR #crypto";
+    const tweets = await twitterClient.v2.search(cryptoSearchTerms, {
+      "tweet.fields": ["created_at", "public_metrics", "author_id"],
+      "user.fields": ["username", "name"],
+      "expansions": ["author_id"],
+      "max_results": 10,
+    });
+
+    console.log(`Fetched ${tweets.data.data?.length || 0} tweets`);
+    
+    const processedTweets = tweets.data.data.map(tweet => {
+      const author = tweets.data.includes?.users?.find(u => u.id === tweet.author_id);
+      return {
+        id: tweet.id,
+        username: author?.username || "unknown",
+        name: author?.name,
+        text: tweet.text,
+        created_at: tweet.created_at,
+        likes: tweet.public_metrics?.like_count,
+        retweets: tweet.public_metrics?.retweet_count,
+        url: `https://twitter.com/${author?.username || "unknown"}/status/${tweet.id}`
+      };
+    });
+    
+    const data = {
+      tweets: processedTweets,
+      fetched_at: new Date().toISOString()
+    };
+    
+    // Cache the response
+    apiCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: data
+    });
+    
+    return data;
+  } catch (error) {
+    console.error("Error fetching Twitter trends:", error);
+    return { 
+      tweets: [], 
+      error: "Twitter API error: " + (error instanceof Error ? error.message : String(error))
+    };
+  }
+}
+
 async function generateAIResponse(messages: Message[], type: string) {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY environment variable is not set");
@@ -174,11 +258,15 @@ async function generateAIResponse(messages: Message[], type: string) {
   let marketData;
   let marketSentiment;
   let hotTokens;
+  let twitterTrends;
+  
   try {
-    [marketData, marketSentiment, hotTokens] = await Promise.all([
+    console.log("Fetching market context data for AI response");
+    [marketData, marketSentiment, hotTokens, twitterTrends] = await Promise.all([
       fetchSolanaTokenData(),
       fetchMarketSentiment(),
-      fetchHotTokens()
+      fetchHotTokens(),
+      fetchTwitterTrends()
     ]);
     console.log("Successfully fetched market context data");
   } catch (error) {
@@ -187,6 +275,7 @@ async function generateAIResponse(messages: Message[], type: string) {
     marketData = { data: [] };
     marketSentiment = { overall: "neutral" };
     hotTokens = { tokens: [] };
+    twitterTrends = { tweets: [] };
   }
   
   // Extract top tokens for context
@@ -216,6 +305,9 @@ ${topTokens.map((t: any) => `- ${t.symbol}: $${t.price} (${t.change24h >= 0 ? '+
 Hot trending tokens:
 ${hotTokens.tokens?.map((t: any) => `- ${t.symbol}: $${t.price} (${t.change24h >= 0 ? '+' : ''}${t.change24h}%), Market Cap: ${t.marketCap}`).join('\n') || 'No trending data available'}
 
+Recent Twitter buzz:
+${twitterTrends.tweets?.slice(0, 3).map((t: any) => `- @${t.username}: "${t.text.substring(0, 60)}..."`).join('\n') || 'No Twitter data available'}
+
 When answering questions:
 1. Be direct and concise - get straight to the point
 2. When asked about the best tokens, give specific recommendations based on current market data
@@ -235,6 +327,7 @@ Your answers should be straightforward, specific, and actionable without unneces
   }
   
   try {
+    console.log("Sending request to OpenAI");
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -264,6 +357,17 @@ Your answers should be straightforward, specific, and actionable without unneces
   }
 }
 
+async function getRecentTweets(count: number = 10) {
+  try {
+    console.log(`Fetching ${count} recent tweets`);
+    const data = await fetchTwitterTrends();
+    return data;
+  } catch (error) {
+    console.error("Error in getRecentTweets:", error);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -275,14 +379,16 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY environment variable is not set");
     }
 
-    const { messages, type = 'general', action } = await req.json();
+    const { messages, type = 'general', action, count = 10 } = await req.json();
     
     // Check if this is a request for tweets
     if (action === 'getRecentTweets') {
-      // Here we'd implement tweet fetching logic but for now we'll return a 501 Not Implemented
+      console.log(`Request for ${count} recent tweets`);
+      const tweetsData = await getRecentTweets(count);
+      
       return new Response(
-        JSON.stringify({ error: "Twitter API functionality not yet implemented" }),
-        { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify(tweetsData),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     

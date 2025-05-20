@@ -47,7 +47,7 @@ const formatTwitterUrl = (handle: string, idStr?: string): string => {
   return `https://x.com/${username}`;
 };
 
-// Function to fetch real crypto tweets (simulated)
+// Function to fetch real crypto tweets
 const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
   try {
     // Try to fetch real tweets from our API endpoint
@@ -57,6 +57,11 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
         count: 10
       }
     });
+    
+    if (error) {
+      console.error("Error fetching tweets from API:", error);
+      throw new Error(error.message);
+    }
     
     if (!error && apiData && Array.isArray(apiData.tweets) && apiData.tweets.length > 0) {
       console.log('Successfully fetched real tweets data');
@@ -146,7 +151,7 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
       {
         id: generateTwitterId(),
         handle: '@tarekroussian',
-        content: 'Watching WIF\'s performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
+        content: 'Watching $WIF\'s performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
         timestamp: getRelativeTime(Math.floor(Math.random() * 480) + 480),
         likes: 3456,
         retweets: 867,
@@ -154,6 +159,7 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
       }
     ];
     
+    toast.warning("Using simulated Twitter data. Connect Twitter API for live tweets.");
     return realTweets;
   }
 };

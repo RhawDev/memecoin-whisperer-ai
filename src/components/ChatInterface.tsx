@@ -5,14 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SendHorizontal, Sparkles } from 'lucide-react';
+import { SendHorizontal, Sparkles, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
 
 type Message = {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'error';
   content: string;
   timestamp: Date;
 };
@@ -21,6 +21,7 @@ const ChatInterface: React.FC = () => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initial greeting message
@@ -55,13 +56,16 @@ const ChatInterface: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setError(null);
 
     try {
       // Prepare messages for the API call
-      const apiMessages = [...messages, userMessage].map(m => ({
-        role: m.role,
-        content: m.content
-      }));
+      const apiMessages = [...messages, userMessage]
+        .filter(m => m.role !== 'error')
+        .map(m => ({
+          role: m.role,
+          content: m.content
+        }));
       
       console.log("Sending message to AI Chat:", input);
       
@@ -102,14 +106,23 @@ const ChatInterface: React.FC = () => {
       // Add error message to chat
       const errorMessage: Message = {
         id: Date.now().toString(),
-        role: 'assistant',
+        role: 'error',
         content: 'Sorry, I encountered an error processing your request. Please try again.',
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, errorMessage]);
+      setError(err.message || 'Unknown error occurred');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    // Find the last user message
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMessage) {
+      setInput(lastUserMessage.content);
     }
   };
 
@@ -137,10 +150,13 @@ const ChatInterface: React.FC = () => {
                   <Avatar className={`h-8 w-8 ${
                     message.role === 'user' 
                       ? 'bg-indigo-700' 
-                      : 'bg-gradient-to-br from-purple-500 to-indigo-500'
+                      : message.role === 'error'
+                        ? 'bg-red-700'
+                        : 'bg-gradient-to-br from-purple-500 to-indigo-500'
                   }`}>
                     <div className="flex h-full items-center justify-center text-xs font-medium">
-                      {message.role === 'user' ? 'You' : 'AI'}
+                      {message.role === 'user' ? 'You' : 
+                       message.role === 'error' ? '!' : 'AI'}
                     </div>
                   </Avatar>
                   
@@ -148,7 +164,9 @@ const ChatInterface: React.FC = () => {
                     className={`rounded-lg p-3 ${
                       message.role === 'user' 
                         ? 'bg-indigo-600 text-white' 
-                        : 'bg-gray-800/50 border border-white/10'
+                        : message.role === 'error'
+                          ? 'bg-red-900/50 border border-red-700/50 text-white'
+                          : 'bg-gray-800/50 border border-white/10'
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -169,6 +187,23 @@ const ChatInterface: React.FC = () => {
                   <div className="rounded-lg p-3 bg-gray-800/50 border border-white/10">
                     <Spinner size="sm" />
                   </div>
+                </div>
+              </div>
+            )}
+            
+            {error && !isLoading && (
+              <div className="flex justify-center">
+                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 flex items-center gap-2 max-w-[80%]">
+                  <AlertTriangle className="text-red-500 h-5 w-5" />
+                  <span className="text-sm text-red-200">Error: {error}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleRetry}
+                    className="ml-2 text-xs border border-red-500/30 hover:bg-red-900/30"
+                  >
+                    Retry
+                  </Button>
                 </div>
               </div>
             )}
