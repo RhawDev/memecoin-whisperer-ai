@@ -61,21 +61,6 @@ serve(async (req: Request) => {
         // Define trading styles - more realistic for new wallets
         const tradingStyles = [
           { 
-            style: "New Wallet Explorer", 
-            personality: "The Newcomer", 
-            emoji: "🔎",
-            strengths: [
-              "Fresh perspective on the market",
-              "No emotional baggage from past trades",
-              "Potential for strategic entry timing"
-            ],
-            weaknesses: [
-              "Limited trading history",
-              "Still developing risk management skills",
-              "Uncertain about position sizing"
-            ]
-          },
-          { 
             style: "Cautious Participant", 
             personality: "The Observer", 
             emoji: "👀",
@@ -88,12 +73,45 @@ serve(async (req: Request) => {
               "May miss opportunities due to hesitation",
               "Limited exposure to market patterns",
               "Need to develop more conviction"
-            ]
+            ],
+            copyTradingSafety: {
+              score: 40 + (addressSum % 20),
+              rating: "Medium" as "Safe" | "Medium" | "Risky",
+              reasons: [
+                "Limited trading history",
+                "Average win rate",
+                "Cautious investment approach"
+              ]
+            }
+          },
+          { 
+            style: "New Wallet Explorer", 
+            personality: "The Newcomer", 
+            emoji: "🔎",
+            strengths: [
+              "Fresh perspective on the market",
+              "No emotional baggage from past trades",
+              "Potential for strategic entry timing"
+            ],
+            weaknesses: [
+              "Limited trading history",
+              "Still developing risk management skills",
+              "Uncertain about position sizing"
+            ],
+            copyTradingSafety: {
+              score: 20 + (addressSum % 30),
+              rating: "Risky" as "Safe" | "Medium" | "Risky",
+              reasons: [
+                "Insufficient transaction history",
+                "Unproven trading strategy",
+                "Limited risk management data"
+              ]
+            }
           },
           { 
             style: "Early Adopter", 
-            personality: "The Pioneer", 
-            emoji: "🚀",
+            personality: "The Sniper", 
+            emoji: "🎯",
             strengths: [
               "Quick to spot new opportunities",
               "Willing to take calculated risks",
@@ -103,12 +121,21 @@ serve(async (req: Request) => {
               "Still building experience with exit timing",
               "Balancing enthusiasm with proper analysis",
               "Developing portfolio management skills"
-            ]
+            ],
+            copyTradingSafety: {
+              score: 30 + (addressSum % 40),
+              rating: "Medium" as "Safe" | "Medium" | "Risky",
+              reasons: [
+                "Fast transaction execution",
+                "Limited trading history",
+                "Higher risk tolerance"
+              ]
+            }
           },
           { 
             style: "Strategic Entrant", 
-            personality: "The Tactician", 
-            emoji: "♟️",
+            personality: "The Strategist", 
+            emoji: "🧠",
             strengths: [
               "Methodical approach to investments",
               "Focus on fundamentals",
@@ -118,7 +145,16 @@ serve(async (req: Request) => {
               "Still gathering market intelligence",
               "Limited trading data to analyze patterns",
               "Working on refining strategy"
-            ]
+            ],
+            copyTradingSafety: {
+              score: 45 + (addressSum % 30),
+              rating: "Medium" as "Safe" | "Medium" | "Risky",
+              reasons: [
+                "Methodical approach",
+                "Consistent trading patterns",
+                "Limited data history"
+              ]
+            }
           }
         ];
 
@@ -201,11 +237,12 @@ serve(async (req: Request) => {
           }
         }
         
-        // Recent transactions for new wallets
+        // Recent transactions for new wallets - ensure count matches metrics.totalTxCount
         const txTypes = ["Swap", "Transfer", "Stake"];
         const recentTransactions = [];
+        const txCount = Math.max(3, Math.min(7, 5 + (addressSum % 3))); // Between 5-7 transactions
         
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < txCount; i++) {
           const day = new Date();
           day.setDate(day.getDate() - Math.floor(i / 2));
           day.setHours(day.getHours() - (i % 2) * 6);
@@ -236,9 +273,9 @@ serve(async (req: Request) => {
           recentTransactions,
           dailyTradeStats,
           metrics: {
-            totalTxCount: Math.floor(5 + (addressSum % 15)),
-            buyCount: Math.floor(3 + (addressSum % 8)),
-            sellCount: Math.floor(2 + (addressSum % 7)),
+            totalTxCount: recentTransactions.length, // Match with actual count!
+            buyCount: Math.floor(recentTransactions.length * 0.6),
+            sellCount: Math.floor(recentTransactions.length * 0.4),
             averageHoldTime: `${holdingTime} days`,
             winRate: `${winRate}%`,
             volume: `${tradingVolume.toFixed(2)} SOL`
@@ -261,6 +298,7 @@ serve(async (req: Request) => {
             emoji: selectedStyle.emoji,
             strengths: selectedStyle.strengths,
             weaknesses: selectedStyle.weaknesses,
+            copyTradingSafety: selectedStyle.copyTradingSafety,
             tips,
             stats: {
               averageHoldTime: `${holdingTime} days`,
@@ -334,7 +372,7 @@ serve(async (req: Request) => {
           const volume = 100 + (addressSum % 1000);
           
           return {
-            totalTxCount: 10 + (addressSum % 50),
+            totalTxCount: Math.max(3, Math.min(10, 5 + (addressSum % 5))), // Between 5-10 transactions
             buyCount: 6 + (addressSum % 30),
             sellCount: 4 + (addressSum % 20),
             averageHoldTime: `${holdDays} days`,
@@ -474,7 +512,7 @@ serve(async (req: Request) => {
       
       // Determine trading style based on wallet address to ensure variations
       const addressSum = Array.from(walletAddress).reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0) % 1000;
-      const styleIndex = addressSum % 4;
+      const styleIndex = addressSum % 8; // Updated to match the 8 archetypes in TraderArchetypes
       
       // Define trading styles
       const tradingStyles = [
@@ -491,52 +529,184 @@ serve(async (req: Request) => {
             "Occasional hesitation",
             "Missing some explosive opportunities",
             "Too conservative on position sizing"
-          ]
+          ],
+          copyTradingSafety: {
+            score: 85,
+            rating: "Safe" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Consistent risk management",
+              "Calculated decision making",
+              "Methodical approach to trading"
+            ]
+          }
         },
         { 
-          style: "Hoarding Collector", 
+          style: "Precision Hunter", 
+          personality: "The Sniper", 
+          emoji: "🎯",
+          strengths: [
+            "Fast reaction to market trends",
+            "Excellent timing on entries",
+            "Focused execution"
+          ],
+          weaknesses: [
+            "Sometimes trigger-happy",
+            "May buy without sufficient research",
+            "Impatience with slower positions"
+          ],
+          copyTradingSafety: {
+            score: 65,
+            rating: "Medium" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Fast execution can catch opportunities",
+              "May execute trades without full analysis",
+              "Good short-term performance"
+            ]
+          }
+        },
+        { 
+          style: "Conviction Holder", 
           personality: "The Diamond Hand", 
           emoji: "💎",
           strengths: [
             "Strong conviction in assets",
-            "Not swayed by market volatility",
+            "Unfazed by market volatility",
             "Building substantial positions"
           ],
           weaknesses: [
             "Reluctant to take profits",
             "Holding declining assets too long",
             "Missing short-term opportunities"
-          ]
+          ],
+          copyTradingSafety: {
+            score: 70,
+            rating: "Medium" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Long-term orientation reduces panic selling",
+              "May miss profit-taking opportunities",
+              "Generally stable through market cycles"
+            ]
+          }
         },
         { 
-          style: "Quick Flipper", 
-          personality: "The Surfer", 
-          emoji: "🏄",
+          style: "Maximum Risk", 
+          personality: "The Degen", 
+          emoji: "🔥",
           strengths: [
-            "Fast reaction to market trends",
-            "Capturing short-term gains",
-            "High trading frequency"
+            "Not afraid of high-risk positions",
+            "Early entry into emerging opportunities",
+            "High conviction in chosen plays"
           ],
           weaknesses: [
-            "Selling winners too early",
-            "High transaction costs",
-            "Missing long-term trends"
-          ]
+            "Often overleveraged",
+            "Prone to emotional decisions",
+            "Excessive risk-taking"
+          ],
+          copyTradingSafety: {
+            score: 30,
+            rating: "Risky" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "High volatility in performance",
+              "Unpredictable risk management",
+              "Potential for both significant gains and losses"
+            ]
+          }
         },
         { 
-          style: "Active Trader", 
-          personality: "The Day Trader", 
-          emoji: "📊",
+          style: "Future Forecaster", 
+          personality: "The Oracle", 
+          emoji: "🔮",
           strengths: [
-            "Technical analysis focus",
-            "Adaptable to market conditions",
-            "Disciplined trade execution"
+            "Visionary market perspective",
+            "Early identification of trends",
+            "Long-term thinking"
           ],
           weaknesses: [
-            "Over-trading in sideways markets",
-            "Analysis paralysis",
-            "Time-intensive strategy"
-          ]
+            "Sometimes too early to market",
+            "Opportunity cost while waiting",
+            "May miss short-term plays"
+          ],
+          copyTradingSafety: {
+            score: 75,
+            rating: "Safe" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Forward-thinking strategy",
+              "Usually diversified across time horizons",
+              "Good at identifying sustainable trends"
+            ]
+          }
+        },
+        { 
+          style: "Fresh Explorer", 
+          personality: "The Newcomer", 
+          emoji: "🔎",
+          strengths: [
+            "Fresh perspective on markets",
+            "No emotional baggage from past trades",
+            "Eagerness to learn and adapt"
+          ],
+          weaknesses: [
+            "Limited trading history",
+            "Still developing risk management",
+            "Uncertain position sizing"
+          ],
+          copyTradingSafety: {
+            score: 25,
+            rating: "Risky" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Insufficient track record",
+              "Unproven trading strategy",
+              "Still developing trading patterns"
+            ]
+          }
+        },
+        { 
+          style: "Cautious Assessment", 
+          personality: "The Observer", 
+          emoji: "👀",
+          strengths: [
+            "Careful approach to investments",
+            "Thorough research",
+            "Avoiding impulsive decisions"
+          ],
+          weaknesses: [
+            "May miss opportunities due to hesitation",
+            "Limited market exposure",
+            "Needs to develop more conviction"
+          ],
+          copyTradingSafety: {
+            score: 60,
+            rating: "Medium" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Careful approach reduces major losses",
+              "Limited number of trades to evaluate",
+              "Generally makes well-researched decisions"
+            ]
+          }
+        },
+        { 
+          style: "Wave Surfer", 
+          personality: "The Swing Trader", 
+          emoji: "🌊",
+          strengths: [
+            "Excellent at identifying momentum",
+            "Balances risk and reward effectively",
+            "Good entry and exit timing"
+          ],
+          weaknesses: [
+            "Requires active market monitoring",
+            "May struggle in choppy conditions",
+            "Timing-dependent strategy"
+          ],
+          copyTradingSafety: {
+            score: 70,
+            rating: "Medium" as "Safe" | "Medium" | "Risky",
+            reasons: [
+              "Balanced risk-reward approach",
+              "Adaptable to changing market conditions",
+              "Clear trading patterns"
+            ]
+          }
         }
       ];
       
@@ -625,12 +795,13 @@ serve(async (req: Request) => {
           emoji: selectedStyle.emoji,
           strengths: selectedStyle.strengths,
           weaknesses: selectedStyle.weaknesses,
+          copyTradingSafety: selectedStyle.copyTradingSafety,
           tips,
           stats: {
             averageHoldTime: metrics.averageHoldTime,
             winRate: metrics.winRate,
             tradingVolume: metrics.volume,
-            riskUsage: ["Conservative", "Moderate", "Aggressive", "Variable"][styleIndex]
+            riskUsage: ["Conservative", "Moderate", "Aggressive", "Variable"][styleIndex % 4]
           }
         }
       };

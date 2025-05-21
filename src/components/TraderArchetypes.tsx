@@ -9,6 +9,7 @@ type ArchetypeProps = {
   gradientClass: string;
   strengths: string;
   weaknesses: string;
+  copyTradingRating?: string;
   delay?: number;
 };
 
@@ -20,6 +21,7 @@ const ArchetypeCard: React.FC<ArchetypeProps> = ({
   gradientClass,
   strengths,
   weaknesses,
+  copyTradingRating,
   delay = 0
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -81,6 +83,12 @@ const ArchetypeCard: React.FC<ArchetypeProps> = ({
             <h4 className="text-white text-sm font-medium mb-1">WEAKNESSES</h4>
             <p className="text-gray-400 text-sm">{weaknesses}</p>
           </div>
+          {copyTradingRating && (
+            <div>
+              <h4 className="text-white text-sm font-medium mb-1">COPY TRADING</h4>
+              <p className="text-gray-400 text-sm">{copyTradingRating}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -119,6 +127,7 @@ const TraderArchetypes = () => {
       traits: ["Patient", "Analytical", "Risk-aware"],
       strengths: "Makes informed decisions based on deep research and timing. Rarely FOMO buys.",
       weaknesses: "Sometimes misses explosive opportunities due to over-analysis.",
+      copyTradingRating: "High - Consistent returns with methodical approach make them reliable for copy trading.",
       gradientClass: "gradient-text"
     },
     {
@@ -128,7 +137,18 @@ const TraderArchetypes = () => {
       traits: ["Fast", "Decisive", "Focused"],
       strengths: "Excellent at capitalizing on short-term opportunities and timing market momentum.",
       weaknesses: "Can sometimes be too trigger-happy, buying without sufficient research.",
+      copyTradingRating: "Medium - Good for quick gains, but requires active monitoring due to rapid trades.",
       gradientClass: "gradient-text-pink-orange"
+    },
+    {
+      name: "The Diamond Hand",
+      emoji: "💎",
+      description: "The ultimate HODLer. Strong conviction in assets, unfazed by volatility and temporary dips.",
+      traits: ["Patient", "Conviction", "Long-term"],
+      strengths: "Able to weather market storms and benefit from long-term growth trends.",
+      weaknesses: "May miss profit-taking opportunities, sometimes holding declining assets too long.",
+      copyTradingRating: "Medium-High - Stable long-term gains, but requires patience during downturns.",
+      gradientClass: "gradient-text-blue-purple"
     },
     {
       name: "The Degen",
@@ -137,6 +157,7 @@ const TraderArchetypes = () => {
       traits: ["Risk-taker", "Momentum-chaser", "Community-focused"],
       strengths: "Not afraid to take big positions on early projects with huge potential.",
       weaknesses: "Often overleveraged and prone to emotional decisions during volatility.",
+      copyTradingRating: "Low - High risk with extreme volatility makes copy trading unpredictable.",
       gradientClass: "gradient-text-yellow-red"
     },
     {
@@ -146,7 +167,38 @@ const TraderArchetypes = () => {
       traits: ["Visionary", "Trendsetter", "Patient"],
       strengths: "Ability to see the bigger picture and invest early in future winners.",
       weaknesses: "Sometimes too early to market, leading to opportunity cost while waiting.",
+      copyTradingRating: "High - Excellent at identifying early trends, but returns may take time to materialize.",
       gradientClass: "gradient-text-green-cyan"
+    },
+    {
+      name: "The Newcomer",
+      emoji: "🔎",
+      description: "Fresh to the scene with fresh perspective. Still learning the ropes of crypto trading.",
+      traits: ["Curious", "Adaptable", "Learning"],
+      strengths: "Open to new strategies, no emotional baggage from past trades, eagerness to learn.",
+      weaknesses: "Limited trading history, still developing risk management skills, uncertain position sizing.",
+      copyTradingRating: "Low - Insufficient track record to evaluate consistency or strategy effectiveness.",
+      gradientClass: "gradient-text-purple-blue"
+    },
+    {
+      name: "The Observer",
+      emoji: "👀",
+      description: "Cautious and thoughtful. Takes time to research and understand before committing.",
+      traits: ["Methodical", "Cautious", "Detail-oriented"],
+      strengths: "Careful approach to investments, thorough research, avoids impulsive decisions.",
+      weaknesses: "May miss opportunities due to hesitation, limited exposure to market patterns.",
+      copyTradingRating: "Medium - Safe approach with moderate returns, but may miss some opportunities.",
+      gradientClass: "gradient-text-cyan-blue"
+    },
+    {
+      name: "The Swing Trader",
+      emoji: "🌊",
+      description: "Rides market waves with precision. Capitalizes on medium-term market movements.",
+      traits: ["Technical", "Responsive", "Balanced"],
+      strengths: "Excellent at identifying entry and exit points, balances risk and reward effectively.",
+      weaknesses: "Requires active market monitoring, may struggle in choppy market conditions.",
+      copyTradingRating: "High - Good balance of risk and reward with consistent trading patterns.",
+      gradientClass: "gradient-text-blue-green"
     }
   ];
 
@@ -162,7 +214,7 @@ const TraderArchetypes = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {archetypes.map((archetype, index) => (
             <ArchetypeCard
               key={index}
@@ -173,6 +225,7 @@ const TraderArchetypes = () => {
               gradientClass={archetype.gradientClass}
               strengths={archetype.strengths}
               weaknesses={archetype.weaknesses}
+              copyTradingRating={archetype.copyTradingRating}
               delay={index * 150}
             />
           ))}

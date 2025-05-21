@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Spinner } from "@/components/ui/spinner";
 import WalletDetailedStats from './WalletDetailedStats';
-import { ArrowRight, Info } from 'lucide-react';
+import { ArrowRight, Info, ShieldCheck } from 'lucide-react';
 
 type WalletProfile = {
   tradingStyle: string;
@@ -22,6 +22,11 @@ type WalletProfile = {
     winRate: string;
     tradingVolume: string;
     riskUsage: string;
+  };
+  copyTradingSafety?: {
+    score: number;
+    rating: "Safe" | "Medium" | "Risky";
+    reasons: string[];
   };
 };
 
@@ -81,6 +86,17 @@ const WalletAnalyzer = () => {
       if (!data || !data.profile) {
         throw new Error('Invalid response from wallet analyzer');
       }
+
+      // Verify transaction count matches what's reported
+      if (data.metrics && data.recentTransactions) {
+        const txCount = data.metrics.totalTxCount;
+        console.log(`Reported transactions: ${txCount}, Recent transactions: ${data.recentTransactions.length}`);
+        
+        if (txCount !== data.recentTransactions.length && data.recentTransactions.length < 10) {
+          // Only log a warning if the mismatch seems significant
+          console.warn("Transaction count mismatch. API reported:", txCount, "Available:", data.recentTransactions.length);
+        }
+      }
       
       setWalletData(data);
       setIsAnalyzed(true);
@@ -109,6 +125,94 @@ const WalletAnalyzer = () => {
   // Check if wallet is new based on createdDaysAgo or transaction count
   const isNewWallet = walletData?.walletOverview?.createdDaysAgo < 5 || 
                       (walletData?.metrics?.totalTxCount && walletData.metrics.totalTxCount < 10);
+
+  // Generate Copy Trading safety assessment if not provided by API
+  const getCopyTradingSafety = () => {
+    if (!walletData) return null;
+    
+    if (walletData.profile.copyTradingSafety) {
+      return walletData.profile.copyTradingSafety;
+    }
+    
+    // Calculate safety based on available metrics
+    const txCount = walletData.metrics?.totalTxCount || 0;
+    const winRate = parseInt(walletData.profile.stats.winRate || "0") || 0;
+    const riskScore = walletData.riskMetrics?.riskScore || 50;
+    const volatilityExposure = walletData.riskMetrics?.volatilityExposure || "Medium";
+    const holdTime = parseFloat(walletData.profile.stats.averageHoldTime?.split(" ")[0] || "0") || 0;
+    
+    // Generate reasons
+    const reasons: string[] = [];
+    
+    // Add transaction count factor
+    if (txCount < 10) {
+      reasons.push("Insufficient transaction history (less than 10 transactions)");
+    } else if (txCount < 50) {
+      reasons.push("Limited transaction history");
+    } else {
+      reasons.push("Extensive transaction history");
+    }
+    
+    // Add win rate factor
+    if (winRate < 40) {
+      reasons.push("Low win rate");
+    } else if (winRate > 65) {
+      reasons.push("High win rate");
+    } else {
+      reasons.push("Average win rate");
+    }
+    
+    // Add risk factor
+    if (riskScore > 70) {
+      reasons.push("High risk profile");
+    } else if (volatilityExposure === "High") {
+      reasons.push("High volatility exposure");
+    }
+    
+    // Add hold time factor
+    if (holdTime < 1) {
+      reasons.push("Very short hold times indicate frequent trading");
+    }
+    
+    // Calculate safety score (0-100)
+    let safetyScore = 50; // Start at neutral
+    
+    // Transaction history factor (0-25)
+    safetyScore += Math.min(25, txCount / 4);
+    
+    // Win rate factor (-30 to +30)
+    safetyScore += (winRate - 50) * 0.6;
+    
+    // Risk penalty (-25 to 0)
+    safetyScore -= (riskScore / 100) * 25;
+    
+    // New wallet penalty
+    if (isNewWallet) {
+      safetyScore -= 30;
+      reasons.unshift("New wallet with limited history");
+    }
+    
+    // Clamp score between 0-100
+    safetyScore = Math.max(0, Math.min(100, safetyScore));
+    
+    // Determine rating
+    let rating: "Safe" | "Medium" | "Risky";
+    if (safetyScore >= 70) {
+      rating = "Safe";
+    } else if (safetyScore >= 40) {
+      rating = "Medium";
+    } else {
+      rating = "Risky";
+    }
+    
+    return {
+      score: Math.round(safetyScore),
+      rating,
+      reasons
+    };
+  };
+
+  const copyTradingSafety = getCopyTradingSafety();
 
   return (
     <div className="max-w-6xl mx-auto px-4">
@@ -207,6 +311,7 @@ const WalletAnalyzer = () => {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="stats">Trading Stats</TabsTrigger>
               <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+              <TabsTrigger value="copy-trading">Copy Trading</TabsTrigger>
             </TabsList>
             
             <TabsContent value="overview">
@@ -340,6 +445,100 @@ const WalletAnalyzer = () => {
                       </li>
                     ))}
                   </ul>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="copy-trading">
+              <Card className="glass-card border-white/10">
+                <CardHeader>
+                  <CardTitle className="gradient-text-blue-purple">Copy Trading Safety Assessment</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Evaluation of this wallet's suitability for copy trading
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {copyTradingSafety && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <ShieldCheck className="h-10 w-10 mr-3 text-indigo-400" />
+                          <div>
+                            <h3 className="text-xl font-medium">
+                              {copyTradingSafety.rating === "Safe" ? (
+                                <span className="text-green-400">Safe for Copy Trading</span>
+                              ) : copyTradingSafety.rating === "Medium" ? (
+                                <span className="text-yellow-400">Medium Risk for Copy Trading</span>
+                              ) : (
+                                <span className="text-red-400">High Risk for Copy Trading</span>
+                              )}
+                            </h3>
+                            <p className="text-gray-400">Safety Score: {copyTradingSafety.score}/100</p>
+                          </div>
+                        </div>
+                        
+                        <div className="w-24 h-24 relative">
+                          <svg className="w-full h-full" viewBox="0 0 36 36">
+                            <path
+                              d="M18 2.0845
+                                a 15.9155 15.9155 0 0 1 0 31.831
+                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none"
+                              stroke="#444"
+                              strokeWidth="3"
+                            />
+                            <path
+                              d="M18 2.0845
+                                a 15.9155 15.9155 0 0 1 0 31.831
+                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none"
+                              stroke={copyTradingSafety.rating === "Safe" ? "#10b981" : copyTradingSafety.rating === "Medium" ? "#f59e0b" : "#ef4444"}
+                              strokeWidth="3"
+                              strokeDasharray={`${copyTradingSafety.score}, 100`}
+                              strokeLinecap="round"
+                            />
+                            <text x="18" y="20.5" textAnchor="middle" fontSize="10" fill="white">
+                              {copyTradingSafety.score}%
+                            </text>
+                          </svg>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-white font-medium mb-3">Assessment Factors</h4>
+                        <ul className="space-y-3">
+                          {copyTradingSafety.reasons.map((reason, index) => (
+                            <li key={index} className="flex items-center bg-white/5 p-3 rounded-lg">
+                              <span className={`h-2 w-2 rounded-full mr-3 ${
+                                reason.includes("High win") || 
+                                reason.includes("Extensive") || 
+                                reason.includes("Low risk")
+                                  ? "bg-green-400" 
+                                  : reason.includes("Limited") || 
+                                    reason.includes("Average")
+                                    ? "bg-yellow-400" 
+                                    : "bg-red-400"
+                              }`}></span>
+                              <span className="text-gray-300">{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div className="bg-white/5 p-4 rounded-lg">
+                        <h4 className="text-white font-medium mb-2">Recommendation</h4>
+                        <p className="text-gray-300">
+                          {copyTradingSafety.rating === "Safe" ? (
+                            "This wallet demonstrates consistent trading behavior and risk management, making it suitable for copy trading."
+                          ) : copyTradingSafety.rating === "Medium" ? (
+                            "This wallet shows potential but has some risk factors. Consider a small allocation if copy trading this wallet."
+                          ) : (
+                            "This wallet has several high-risk indicators. Not recommended for copy trading at this time."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
