@@ -1,10 +1,22 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import SentimentAnalyzer from './SentimentAnalyzer';
 import SolanaTokenDetails from './SolanaTokenDetails';
 
 const SentimentChart: React.FC = () => {
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // Function to reset error state and retry operations
+  const handleRetry = () => {
+    setApiError(null);
+    // This will trigger child components to re-fetch data when they detect the error is cleared
+    window.dispatchEvent(new CustomEvent('retry-api-request'));
+  };
+  
   return (
     <div className="space-y-6">
       <div className="mb-6">
@@ -14,6 +26,24 @@ const SentimentChart: React.FC = () => {
         </p>
       </div>
       
+      {apiError && (
+        <Alert variant="destructive" className="bg-red-900/20 border-red-900/50 mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>API Connection Error</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2">
+            <p>{apiError}</p>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="w-fit flex items-center gap-2 mt-2 hover:bg-red-900/20"
+              onClick={handleRetry}
+            >
+              <RefreshCw className="h-4 w-4" /> Retry Connection
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Tabs defaultValue="sentiment">
         <TabsList className="mb-4">
           <TabsTrigger value="sentiment">Market Sentiment</TabsTrigger>
@@ -21,11 +51,11 @@ const SentimentChart: React.FC = () => {
         </TabsList>
         
         <TabsContent value="sentiment">
-          <SentimentAnalyzer />
+          <SentimentAnalyzer onError={(error) => setApiError(error)} />
         </TabsContent>
         
         <TabsContent value="token-details">
-          <SolanaTokenDetails />
+          <SolanaTokenDetails onError={(error) => setApiError(error)} />
         </TabsContent>
       </Tabs>
     </div>

@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, X, AlertTriangle, Twitter, ExternalLink, RefreshCcw } from 'lucide-react';
+import { Plus, X, AlertTriangle, Twitter, ExternalLink, RefreshCcw, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const tweetSchema = z.object({
   handle: z.string()
@@ -25,36 +26,38 @@ type TwitterHandle = {
 
 type Tweet = {
   id: string;
-  handle: string;
-  content: string;
-  timestamp: string;
+  username: string;  // Changed from handle to username for consistency with API
+  text: string;      // Changed from content to text for consistency with API
+  created_at: string; // Changed from timestamp to created_at
   likes?: number;
   retweets?: number;
-  tweet_url?: string;
+  url?: string;     // Changed from tweet_url to url
 };
 
-const formatTwitterUrl = (handle: string, idStr?: string): string => {
+const formatTwitterUrl = (username: string, idStr?: string): string => {
   // Remove @ prefix if present
-  const username = handle.startsWith('@') ? handle.substring(1) : handle;
+  const handle = username.startsWith('@') ? username.substring(1) : username;
   
   // If we have a tweet ID, format as a tweet URL
   if (idStr) {
-    return `https://x.com/${username}/status/${idStr}`;
+    return `https://x.com/${handle}/status/${idStr}`;
   }
   
   // Otherwise, format as a profile URL
-  return `https://x.com/${username}`;
+  return `https://x.com/${handle}`;
 };
 
-// Function to fetch real crypto tweets
-const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
+// Function to fetch tweets from our new edge function
+const fetchTweets = async (options: { 
+  action: string; 
+  query?: string;
+  count?: number;
+  usernames?: string[];
+}): Promise<Tweet[]> => {
   try {
-    // Try to fetch real tweets from our API endpoint
-    const { data: apiData, error } = await supabase.functions.invoke('ai-chat', {
-      body: {
-        action: 'getRecentTweets',
-        count: 10
-      }
+    // Call our new edge function
+    const { data, error } = await supabase.functions.invoke('twitter-api', {
+      body: options
     });
     
     if (error) {
@@ -62,104 +65,62 @@ const fetchRecentCryptoTweets = async (): Promise<Tweet[]> => {
       throw new Error(error.message);
     }
     
-    if (!error && apiData && Array.isArray(apiData.tweets) && apiData.tweets.length > 0) {
-      console.log('Successfully fetched real tweets data');
-      return apiData.tweets.map((tweet: any) => ({
+    if (!error && data && Array.isArray(data.tweets) && data.tweets.length > 0) {
+      console.log('Successfully fetched tweets data', data);
+      
+      // If using fallback data, show a warning to the user
+      if (data.usingFallbackData) {
+        toast({
+          title: "Using simulated data",
+          description: "Could not connect to Twitter API. Using generated tweet data instead.",
+          variant: "warning"
+        });
+      }
+      
+      return data.tweets.map((tweet: any) => ({
         id: tweet.id,
-        handle: tweet.username ? `@${tweet.username}` : '@cryptoinfluencer',
-        content: tweet.text || tweet.content,
-        timestamp: tweet.created_at || '2 hours ago',
+        username: tweet.username ? `@${tweet.username}` : '@cryptoinfluencer',
+        text: tweet.text || '',
+        created_at: tweet.created_at || '2 hours ago',
         likes: tweet.likes || Math.floor(Math.random() * 5000),
         retweets: tweet.retweets || Math.floor(Math.random() * 2000),
-        tweet_url: tweet.url || formatTwitterUrl(tweet.username || 'cryptoinfluencer', tweet.id)
+        url: tweet.url || formatTwitterUrl(tweet.username || 'cryptoinfluencer', tweet.id)
       }));
     }
     
-    throw new Error('Failed to fetch real tweets or empty response');
-  } catch (error) {
-    console.error('Error fetching real tweets, using fallback data:', error);
-    
-    // Generate timestamps relative to current time
-    const now = new Date();
-    const getRelativeTime = (minutesAgo: number) => {
-      if (minutesAgo < 60) {
-        return `${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`;
-      } else if (minutesAgo < 1440) {
-        const hours = Math.floor(minutesAgo / 60);
-        return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-      } else {
-        const days = Math.floor(minutesAgo / 1440);
-        return `${days} day${days === 1 ? '' : 's'} ago`;
-      }
-    };
-    
-    // Generate random ID values that look like Twitter IDs
-    const generateTwitterId = () => {
-      const base = "1";
-      const randomDigits = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
-      return base + randomDigits;
-    };
+    throw new Error('Failed to fetch tweets or empty response');
+  } catch (error: any) {
+    console.error('Error fetching tweets:', error);
+    throw error;
+  }
+};
 
-    // Real crypto influencers with realistic tweets about current topics
-    const realTweets: Tweet[] = [
-      {
-        id: generateTwitterId(),
-        handle: '@elonmusk',
-        content: 'The future currency of Earth will be crypto. Know which ones will win — that\'s the real question.',
-        timestamp: getRelativeTime(Math.floor(Math.random() * 30) + 10),
-        likes: 32546,
-        retweets: 7832,
-        tweet_url: formatTwitterUrl('elonmusk', generateTwitterId())
-      },
-      {
-        id: generateTwitterId(),
-        handle: '@VitalikButerin',
-        content: 'There\'s a big difference between tokens with genuine utility and those that are purely speculative. Always look at what problem a project is actually solving.',
-        timestamp: getRelativeTime(Math.floor(Math.random() * 60) + 60),
-        likes: 18945,
-        retweets: 3567,
-        tweet_url: formatTwitterUrl('VitalikButerin', generateTwitterId())
-      },
-      {
-        id: generateTwitterId(),
-        handle: '@SBF_FTX',
-        content: 'Market cycles come and go. Build during the bear markets, thrive during the bulls.',
-        timestamp: getRelativeTime(Math.floor(Math.random() * 120) + 120),
-        likes: 9872,
-        retweets: 2356,
-        tweet_url: formatTwitterUrl('SBF_FTX', generateTwitterId())
-      },
-      {
-        id: generateTwitterId(),
-        handle: '@cryptoanalyst',
-        content: 'Breaking: Major institutional adoption news for $SOL as payment processor announces integration. Bullish for the ecosystem! #Solana #Crypto',
-        timestamp: getRelativeTime(Math.floor(Math.random() * 240) + 240),
-        likes: 5643,
-        retweets: 1267,
-        tweet_url: formatTwitterUrl('cryptoanalyst', generateTwitterId())
-      },
-      {
-        id: generateTwitterId(),
-        handle: '@SolanaNews',
-        content: 'Solana NFT volume is up 73% this week. Signs that the market is heating up again?',
-        timestamp: getRelativeTime(Math.floor(Math.random() * 360) + 360),
-        likes: 4231,
-        retweets: 985,
-        tweet_url: formatTwitterUrl('SolanaNews', generateTwitterId())
-      },
-      {
-        id: generateTwitterId(),
-        handle: '@tarekroussian',
-        content: 'Watching $WIF\'s performance closely. The meme wars are getting interesting! $WIF $BONK $POPCAT',
-        timestamp: getRelativeTime(Math.floor(Math.random() * 480) + 480),
-        likes: 3456,
-        retweets: 867,
-        tweet_url: formatTwitterUrl('tarekroussian', generateTwitterId())
-      }
-    ];
+// Function to fetch recent crypto tweets
+const fetchRecentCryptoTweets = async (trackedHandles: TwitterHandle[] = []): Promise<Tweet[]> => {
+  try {
+    // Extract usernames from tracked handles (removing @ prefix)
+    const usernames = trackedHandles
+      .map(handle => handle.twitter_handle.replace(/^@/, ''))
+      .filter(username => username.length > 0);
     
-    toast.warning("Using simulated Twitter data. Connect Twitter API for live tweets.");
-    return realTweets;
+    // If we have tracked handles, use them; otherwise fetch general crypto tweets
+    if (usernames.length > 0) {
+      return await fetchTweets({
+        action: 'getRecentTweets',
+        usernames,
+        count: 10
+      });
+    } else {
+      // Fetch general crypto tweets
+      return await fetchTweets({
+        action: 'getRecentTweets',
+        query: 'crypto OR solana OR bitcoin OR ethereum',
+        count: 10
+      });
+    }
+  } catch (error: any) {
+    console.error('Error fetching tweets:', error);
+    throw error;
   }
 };
 
@@ -169,6 +130,7 @@ const TwitterTracking: React.FC = () => {
   const [isLoadingTweets, setIsLoadingTweets] = useState(false);
   const [isDeleting, setIsDeleting] = useState<Record<string, boolean>>({});
   const [recentTweets, setRecentTweets] = useState<Tweet[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof tweetSchema>>({
     resolver: zodResolver(tweetSchema),
@@ -180,6 +142,17 @@ const TwitterTracking: React.FC = () => {
   useEffect(() => {
     fetchHandles();
     fetchRecentTweets();
+
+    // Listen for retry events from parent components
+    const handleRetry = () => {
+      setApiError(null);
+      fetchRecentTweets();
+    };
+    window.addEventListener('retry-api-request', handleRetry);
+
+    return () => {
+      window.removeEventListener('retry-api-request', handleRetry);
+    };
   }, []);
 
   const fetchHandles = async () => {
@@ -205,14 +178,16 @@ const TwitterTracking: React.FC = () => {
 
   const fetchRecentTweets = async () => {
     setIsLoadingTweets(true);
+    setApiError(null);
     try {
-      const tweets = await fetchRecentCryptoTweets();
+      const tweets = await fetchRecentCryptoTweets(handles);
       setRecentTweets(tweets);
     } catch (error: any) {
       console.error('Error fetching tweets:', error);
+      setApiError(error.message || "Failed to load tweets from Twitter API");
       toast({
-        title: "Error",
-        description: "Failed to load recent tweets",
+        title: "Twitter API Error",
+        description: "Could not retrieve tweets. Using cached or simulated data.",
         variant: "destructive"
       });
     } finally {
@@ -304,9 +279,9 @@ const TwitterTracking: React.FC = () => {
     }
   };
 
-  const openTwitterProfile = (handle: string) => {
-    const username = handle.startsWith('@') ? handle.substring(1) : handle;
-    window.open(`https://x.com/${username}`, '_blank');
+  const openTwitterProfile = (username: string) => {
+    const handle = username.startsWith('@') ? username.substring(1) : username;
+    window.open(`https://x.com/${handle}`, '_blank');
   };
 
   const openTweet = (url: string | undefined) => {
@@ -322,8 +297,47 @@ const TwitterTracking: React.FC = () => {
     window.open(url, '_blank');
   };
 
+  // Function to format relative time
+  const formatRelativeTime = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffSecs = Math.floor(diffMs / 1000);
+      
+      if (diffSecs < 60) {
+        return `${diffSecs}s ago`;
+      } else if (diffSecs < 3600) {
+        return `${Math.floor(diffSecs / 60)}m ago`;
+      } else if (diffSecs < 86400) {
+        return `${Math.floor(diffSecs / 3600)}h ago`;
+      } else {
+        return `${Math.floor(diffSecs / 86400)}d ago`;
+      }
+    } catch (e) {
+      return dateString; // If parsing fails, return the original string
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {apiError && (
+        <Alert variant="destructive" className="bg-red-900/20 border-red-900/50 mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex flex-col gap-2">
+            <p>{apiError}</p>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="w-fit flex items-center gap-2 mt-2 hover:bg-red-900/20"
+              onClick={fetchRecentTweets}
+            >
+              <RefreshCcw className="h-4 w-4" /> Retry Connection
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-xl font-bold flex items-center gap-2">
@@ -439,18 +453,20 @@ const TwitterTracking: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {recentTweets.map((tweet, index) => (
-                <div key={index} className="p-4 bg-white/5 rounded-md transition-all hover:bg-white/10">
+                <div key={tweet.id || index} className="p-4 bg-white/5 rounded-md transition-all hover:bg-white/10">
                   <div className="flex justify-between items-start">
                     <button 
                       className="font-medium text-blue-400 hover:text-blue-300 hover:underline flex items-center"
-                      onClick={() => openTwitterProfile(tweet.handle)}
+                      onClick={() => openTwitterProfile(tweet.username)}
                     >
-                      {tweet.handle}
+                      {tweet.username}
                       <ExternalLink className="h-3 w-3 ml-1" />
                     </button>
-                    <span className="text-xs text-gray-400">{tweet.timestamp}</span>
+                    <span className="text-xs text-gray-400">
+                      {formatRelativeTime(tweet.created_at)}
+                    </span>
                   </div>
-                  <p className="mt-2 text-gray-300">{tweet.content}</p>
+                  <p className="mt-2 text-gray-300">{tweet.text}</p>
                   
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center space-x-4 text-xs text-gray-400">
@@ -470,7 +486,7 @@ const TwitterTracking: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       className="text-xs text-blue-400 hover:text-blue-300 p-1 h-auto"
-                      onClick={() => openTweet(tweet.tweet_url)}
+                      onClick={() => openTweet(tweet.url)}
                     >
                       View Tweet <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>

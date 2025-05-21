@@ -9,6 +9,9 @@ import TokenOverview from './TokenOverview';
 import TokenHolders from './TokenHolders';
 import ErrorDisplay from './ErrorDisplay';
 import LoadingState from './LoadingState';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type TokenMetadata = {
   symbol: string;
@@ -38,7 +41,11 @@ type TokenHolder = {
   [key: string]: any;
 };
 
-const SolanaTokenDetails: React.FC = () => {
+interface SolanaTokenDetailsProps {
+  onError?: (error: string) => void;
+}
+
+const SolanaTokenDetails: React.FC<SolanaTokenDetailsProps> = ({ onError }) => {
   const [tokenAddress, setTokenAddress] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [tokenMetadata, setTokenMetadata] = useState<TokenMetadata | null>(null);
@@ -84,14 +91,48 @@ const SolanaTokenDetails: React.FC = () => {
       }
 
       toast.success('Token details fetched successfully');
+      
+      // Clear any parent error state if it exists
+      if (onError) onError('');
+      
     } catch (err: any) {
       console.error('Error fetching token details:', err);
-      setError(err.message || 'Failed to fetch token details');
+      const errorMessage = err.message || 'Failed to fetch token details';
+      setError(errorMessage);
+      
+      // Propagate error to parent component if callback exists
+      if (onError) onError(errorMessage);
+      
       toast.error('Failed to fetch token details');
     } finally {
       setIsLoading(false);
     }
   };
+  
+  // Handle retry attempt
+  const handleRetry = () => {
+    if (tokenAddress) {
+      handleSearch(new Event('submit') as React.FormEvent);
+    } else {
+      setError(null);
+      if (onError) onError('');
+    }
+  };
+
+  // Listen for retry events from parent components
+  React.useEffect(() => {
+    const handleGlobalRetry = () => {
+      if (error && tokenAddress) {
+        handleRetry();
+      }
+    };
+    
+    window.addEventListener('retry-api-request', handleGlobalRetry);
+    
+    return () => {
+      window.removeEventListener('retry-api-request', handleGlobalRetry);
+    };
+  }, [error, tokenAddress]);
 
   return (
     <Card className="glass-card w-full">
@@ -106,7 +147,24 @@ const SolanaTokenDetails: React.FC = () => {
           isLoading={isLoading}
         />
 
-        <ErrorDisplay error={error || ''} />
+        {error && !onError && (
+          <Alert variant="destructive" className="bg-red-900/20 border-red-900/50">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex flex-col gap-2">
+              <p>{error}</p>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-fit flex items-center gap-2 mt-2 hover:bg-red-900/20"
+                onClick={handleRetry}
+              >
+                <RefreshCw className="h-4 w-4" /> Retry Request
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!onError && <ErrorDisplay error={error || ''} />}
 
         {isLoading && <LoadingState />}
 
