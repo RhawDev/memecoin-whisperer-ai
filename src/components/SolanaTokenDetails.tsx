@@ -112,7 +112,9 @@ const SolanaTokenDetails: React.FC<SolanaTokenDetailsProps> = ({ onError }) => {
   // Handle retry attempt
   const handleRetry = () => {
     if (tokenAddress) {
-      handleSearch(new Event('submit') as React.FormEvent);
+      // Fix: Create a proper FormEvent instead of using a plain Event
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+      handleSearch(fakeEvent);
     } else {
       setError(null);
       if (onError) onError('');
