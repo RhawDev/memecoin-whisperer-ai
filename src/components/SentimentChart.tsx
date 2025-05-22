@@ -12,6 +12,12 @@ interface ComponentWithError {
   onError?: (error: string) => void;
 }
 
+// Add missing interface for SentimentAnalyzer
+interface SentimentAnalyzerProps extends ComponentWithError {}
+
+// Add missing interface for SolanaTokenDetails
+interface SolanaTokenDetailsProps extends ComponentWithError {}
+
 const SentimentChart: React.FC = () => {
   const [apiError, setApiError] = useState<string | null>(null);
 
