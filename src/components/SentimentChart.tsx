@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import SentimentAnalyzer from './SentimentAnalyzer';
 import SolanaTokenDetails from './SolanaTokenDetails';
 
-// Add proper interface for SentimentAnalyzer props
-interface SentimentAnalyzerProps {
+// Add proper interface for SentimentAnalyzer and SolanaTokenDetails components
+interface ComponentWithError {
   onError?: (error: string) => void;
 }
 
@@ -56,7 +56,6 @@ const SentimentChart: React.FC = () => {
         </TabsList>
         
         <TabsContent value="sentiment">
-          {/* Cast SentimentAnalyzer as any temporarily to avoid TypeScript error */}
           <SentimentAnalyzer onError={(error) => setApiError(error)} />
         </TabsContent>
         

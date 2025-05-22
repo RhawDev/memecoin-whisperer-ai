@@ -8,7 +8,7 @@ const SOLSCAN_PUBLIC_URL = 'https://public-api.solscan.io'; // Keep public API a
 // Configuration options
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second between retries
-const API_KEY = ''; // Optional: If you have a Solscan API key, add it here
+const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOjE3NDc5MTEyMTU3MzcsImVtYWlsIjoicmhhdy5kZXZAZ21haWwuY29tIiwiYWN0aW9uIjoidG9rZW4tYXBpIiwiYXBpVmVyc2lvbiI6InYyIiwiaWF0IjoxNzQ3OTExMjE1fQ.UQPzzuDxNNubQfrc50WBEZCcDAzzqGDSGSCrrPyBERc'; // Solscan API key
 
 // Helper function to implement retry logic
 async function fetchWithRetry(url: string, options: RequestInit = {}, retries = MAX_RETRIES): Promise<Response> {

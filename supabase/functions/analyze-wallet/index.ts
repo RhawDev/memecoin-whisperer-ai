@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
@@ -6,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Add the Solscan API Key
+const SOLSCAN_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOjE3NDc5MTEyMTU3MzcsImVtYWlsIjoicmhhdy5kZXZAZ21haWwuY29tIiwiYWN0aW9uIjoidG9rZW4tYXBpIiwiYXBpVmVyc2lvbiI6InYyIiwiaWF0IjoxNzQ3OTExMjE1fQ.UQPzzuDxNNubQfrc50WBEZCcDAzzqGDSGSCrrPyBERc';
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -34,19 +36,45 @@ serve(async (req: Request) => {
     }
 
     try {
-      // Use Solscan API with proper error handling
+      // Use Solscan API with proper error handling and API key
       console.log("Fetching wallet data from Solscan API");
-      const solscanResponse = await fetch(`https://public-api.solscan.io/account/${walletAddress}`, {
-        headers: {
-          'Accept': 'application/json',
+      
+      // Updated to use the API key with more reliable API endpoints
+      const apiEndpoints = [
+        `https://api.solscan.io/account/${walletAddress}`,
+        `https://public-api.solscan.io/account/${walletAddress}`
+      ];
+      
+      let solscanResponse = null;
+      let errorStatus = null;
+      
+      // Try multiple endpoints with the API key
+      for (const endpoint of apiEndpoints) {
+        try {
+          console.log(`Attempting to fetch from: ${endpoint}`);
+          solscanResponse = await fetch(endpoint, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${SOLSCAN_API_KEY}`
+            }
+          });
+          
+          if (solscanResponse.ok) {
+            console.log(`Successfully fetched from ${endpoint}`);
+            break;
+          } else {
+            errorStatus = solscanResponse.status;
+            console.error(`Failed to fetch from ${endpoint} with status ${errorStatus}`);
+          }
+        } catch (err) {
+          console.error(`Error fetching from ${endpoint}:`, err);
         }
-      });
+      }
 
-      if (!solscanResponse.ok) {
-        const errorStatus = solscanResponse.status;
-        console.error(`Solscan API error ${errorStatus}`);
+      if (!solscanResponse || !solscanResponse.ok) {
+        console.error(`All Solscan API endpoints failed, last status: ${errorStatus}`);
         
-        // Gather all the latest data from Solana's blockchain
+        // Keep the fallback data generation logic for new wallets
         // For a demonstration or when API is unavailable, generate realistic data based on the wallet
         const addressShort = walletAddress.substring(0, 8);
         const addressSum = Array.from(walletAddress).reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0) % 1000;
@@ -322,42 +350,82 @@ serve(async (req: Request) => {
       const walletData = await solscanResponse.json();
       console.log("Wallet data fetched successfully");
       
-      // Fetch transaction history
+      // Fetch transaction history with API key
       console.log("Fetching transaction history");
-      const txHistoryResponse = await fetch(
-        `https://public-api.solscan.io/account/transactions?account=${walletAddress}&limit=50`,
-        {
-          headers: {
-            'Accept': 'application/json',
+      const txHistoryEndpoints = [
+        `https://api.solscan.io/account/transactions?account=${walletAddress}&limit=50`,
+        `https://public-api.solscan.io/account/transactions?account=${walletAddress}&limit=50`
+      ];
+      
+      let txHistoryResponse = null;
+      
+      // Try multiple endpoints for transaction history
+      for (const endpoint of txHistoryEndpoints) {
+        try {
+          console.log(`Attempting to fetch transactions from: ${endpoint}`);
+          txHistoryResponse = await fetch(endpoint, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${SOLSCAN_API_KEY}`
+            }
+          });
+          
+          if (txHistoryResponse.ok) {
+            console.log(`Successfully fetched transactions from ${endpoint}`);
+            break;
+          } else {
+            console.error(`Failed to fetch transactions from ${endpoint} with status ${txHistoryResponse.status}`);
           }
+        } catch (err) {
+          console.error(`Error fetching transactions from ${endpoint}:`, err);
         }
-      );
+      }
 
       let txHistory = [];
-      if (txHistoryResponse.ok) {
+      if (txHistoryResponse && txHistoryResponse.ok) {
         txHistory = await txHistoryResponse.json();
         console.log("Transaction history fetched successfully, count:", txHistory.length);
       } else {
-        console.error(`Solscan transactions API error ${txHistoryResponse.status}`);
+        console.error(`Solscan transactions API error: Could not fetch from any endpoint`);
       }
       
-      // Fetch token holdings
+      // Fetch token holdings with API key
       console.log("Fetching token holdings");
-      const tokenHoldingsResponse = await fetch(
-        `https://public-api.solscan.io/account/tokens?account=${walletAddress}`,
-        {
-          headers: {
-            'Accept': 'application/json',
+      const tokenEndpoints = [
+        `https://api.solscan.io/account/tokens?account=${walletAddress}`,
+        `https://public-api.solscan.io/account/tokens?account=${walletAddress}`
+      ];
+      
+      let tokenHoldingsResponse = null;
+      
+      // Try multiple endpoints for token holdings
+      for (const endpoint of tokenEndpoints) {
+        try {
+          console.log(`Attempting to fetch tokens from: ${endpoint}`);
+          tokenHoldingsResponse = await fetch(endpoint, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${SOLSCAN_API_KEY}`
+            }
+          });
+          
+          if (tokenHoldingsResponse.ok) {
+            console.log(`Successfully fetched tokens from ${endpoint}`);
+            break;
+          } else {
+            console.error(`Failed to fetch tokens from ${endpoint} with status ${tokenHoldingsResponse.status}`);
           }
+        } catch (err) {
+          console.error(`Error fetching tokens from ${endpoint}:`, err);
         }
-      );
+      }
 
       let tokenHoldings = [];
-      if (tokenHoldingsResponse.ok) {
+      if (tokenHoldingsResponse && tokenHoldingsResponse.ok) {
         tokenHoldings = await tokenHoldingsResponse.json();
         console.log("Token holdings fetched successfully");
       } else {
-        console.error(`Solscan tokens API error ${tokenHoldingsResponse.status}`);
+        console.error(`Solscan tokens API error: Could not fetch from any endpoint`);
       }
       
       // Process the data to extract useful metrics
